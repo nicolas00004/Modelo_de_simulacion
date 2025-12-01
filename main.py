@@ -1,4 +1,5 @@
 import simpy
+import time
 
 def clock(env, name, tick):
     while True:
