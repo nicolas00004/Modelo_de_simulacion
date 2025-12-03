@@ -1,3 +1,5 @@
+Todos los tiempos del programa serán en minutos
+
 # Instrucciones
 
 Para que el programa pueda sea ejecutable en cualquier entorno vamos a usar entornos virtuales de python (venv)
