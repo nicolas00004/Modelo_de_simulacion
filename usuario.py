@@ -2,16 +2,20 @@ import simpy
 from ejercicio import Ejercicio
 import Perfil
 import Gimnasio
-
+import Problema
 
 class Usuario:
-    def __init__(self, env: simpy.Environment, hora_fin: float, gimnasio: Gimnasio, perfil: Perfil):
+    def __init__(self, env: simpy.Environment, hora_fin: float, gimnasio: Gimnasio,
+                 perfil: Perfil,problema:Problema,ocupado:bool):
 
         self.env = env
         self.hora_fin = hora_fin
         self.gimnasio = gimnasio
         self.perfil = perfil
-        self.satisfaccion = 0.0
+        self.satisfaccion = 100
+        self.problema = problema
+        self.ocupado = ocupado
+
 
 
     def entrenar(self, tiempo_total: float):
