@@ -81,5 +81,130 @@
     ],
     "perfil": { "tipo": "Senior", "energia": 60, "prob_descanso": 0.5 },
     "problema": { "tipo": "DolorEspalda", "gravedad": 3 }
+  },
+  {
+    "id": 7,
+    "nombre": "Gabriela Social",
+    "tipo_usuario": "Estudiante",
+    "tiempo_llegada": 20.0,
+    "hora_fin": 130,
+    "ocupado": false,
+    "rutina": [
+      { "tipo_maquina_deseada": "Cardio", "tiempo_uso": 20 },
+      { "tipo_maquina_deseada": "Musculacion", "tiempo_uso": 15 }
+    ],
+    "perfil": { "tipo": "Sociable", "energia": 110, "prob_descanso": 0.6 },
+    "problema": null
+  },
+  {
+    "id": 8,
+    "nombre": "Héctor Fuerza",
+    "tipo_usuario": "Premium",
+    "tiempo_llegada": 22.0,
+    "hora_fin": 150,
+    "ocupado": false,
+    "rutina": [
+      { "tipo_maquina_deseada": "Musculacion", "tiempo_uso": 40 },
+      { "tipo_maquina_deseada": "Musculacion", "tiempo_uso": 40 },
+      { "tipo_maquina_deseada": "Ducha", "tiempo_uso": 20 }
+    ],
+    "perfil": { "tipo": "Avanzado", "energia": 300, "prob_descanso": 0.15 },
+    "problema": null
+  },
+  {
+    "id": 9,
+    "nombre": "Inés Recuperación",
+    "tipo_usuario": "Estándar",
+    "tiempo_llegada": 25.0,
+    "hora_fin": 70,
+    "ocupado": false,
+    "rutina": [
+      { "tipo_maquina_deseada": "Cardio", "tiempo_uso": 10 },
+      { "tipo_maquina_deseada": "Pilates", "tiempo_uso": 20 }
+    ],
+    "perfil": { "tipo": "Rehabilitacion", "energia": 50, "prob_descanso": 0.3 },
+    "problema": { "tipo": "EsguinceTobillo", "gravedad": 4 }
+  },
+  {
+    "id": 10,
+    "nombre": "Javi Maratón",
+    "tipo_usuario": "Básico",
+    "tiempo_llegada": 28.0,
+    "hora_fin": 120,
+    "ocupado": false,
+    "rutina": [
+      { "tipo_maquina_deseada": "Cardio", "tiempo_uso": 60 },
+      { "tipo_maquina_deseada": "Ducha", "tiempo_uso": 10 }
+    ],
+    "perfil": { "tipo": "Resistencia", "energia": 400, "prob_descanso": 0.05 },
+    "problema": null
+  },
+  {
+    "id": 11,
+    "nombre": "Kevin Monitor",
+    "tipo_usuario": "Estudiante",
+    "tiempo_llegada": 30.0,
+    "hora_fin": 90,
+    "ocupado": false,
+    "rutina": [
+      { "tipo_maquina_deseada": "Musculacion", "tiempo_uso": 25 }
+    ],
+    "perfil": { "tipo": "Novato", "energia": 90, "prob_descanso": 0.4 },
+    "problema": null
+  },
+  {
+    "id": 12,
+    "nombre": "Laura Ejecutiva",
+    "tipo_usuario": "Premium",
+    "tiempo_llegada": 35.0,
+    "hora_fin": 80,
+    "ocupado": false,
+    "rutina": [
+      { "tipo_maquina_deseada": "Cardio", "tiempo_uso": 30 },
+      { "tipo_maquina_deseada": "Ducha", "tiempo_uso": 10 }
+    ],
+    "perfil": { "tipo": "Eficiente", "energia": 120, "prob_descanso": 0.0 },
+    "problema": null
+  },
+  {
+    "id": 13,
+    "nombre": "Marcos Crossfit",
+    "tipo_usuario": "Estándar",
+    "tiempo_llegada": 38.0,
+    "hora_fin": 110,
+    "ocupado": false,
+    "rutina": [
+      { "tipo_maquina_deseada": "Musculacion", "tiempo_uso": 20 },
+      { "tipo_maquina_deseada": "Cardio", "tiempo_uso": 15 },
+      { "tipo_maquina_deseada": "Musculacion", "tiempo_uso": 20 }
+    ],
+    "perfil": { "tipo": "Intenso", "energia": 250, "prob_descanso": 0.1 },
+    "problema": { "tipo": "SobrecargaHombro", "gravedad": 2 }
+  },
+  {
+    "id": 14,
+    "nombre": "Nuria Yoga",
+    "tipo_usuario": "Básico",
+    "tiempo_llegada": 40.0,
+    "hora_fin": 100,
+    "ocupado": false,
+    "rutina": [
+      { "tipo_maquina_deseada": "Pilates", "tiempo_uso": 50 }
+    ],
+    "perfil": { "tipo": "Relajado", "energia": 70, "prob_descanso": 0.1 },
+    "problema": null
+  },
+  {
+    "id": 15,
+    "nombre": "Oscar Tardío",
+    "tipo_usuario": "Estudiante",
+    "tiempo_llegada": 50.0,
+    "hora_fin": 95,
+    "ocupado": false,
+    "rutina": [
+      { "tipo_maquina_deseada": "Musculacion", "tiempo_uso": 35 }
+    ],
+    "perfil": { "tipo": "Despistado", "energia": 100, "prob_descanso": 0.25 },
+    "problema": null
   }
 ]
