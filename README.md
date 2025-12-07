@@ -38,3 +38,26 @@ pip3 freeze > requirements.txt
 ```
 
 Cada vez que vayamos a hacer `push` a github tenemos que hacerlo para que los otros sepan que paquetes hemos instalado.
+
+
+# Clases a realizar
+- [] Accesorios
+- [] Accidentes
+- [] Ejercicio
+- [] Gimnasio
+- [] Logs
+- [] Main
+- [] Maquina
+- [] Monitor
+- [] Perfil
+- [] Problema
+- [] Tipo_Cola
+- [] Usuario
+- [] Id
+- [] Nombre
+- [] Tipo_usuario?
+- [] Tiempo_llegada
+- [] Rutina?
+- [] Ocupado
+- [] Hora_fin
+- [] Satisfaccion
