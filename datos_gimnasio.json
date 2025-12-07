@@ -25,7 +25,7 @@
       "id": 102,
       "tipo_maquina": "Cardio",
       "tipo_cola": "FIFO",
-      "disponibilidad": false,
+      "disponibilidad": true,
       "durabilidad": 10
     }
   ],

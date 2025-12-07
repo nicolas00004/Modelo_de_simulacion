@@ -3,48 +3,83 @@
     "id": 1,
     "nombre": "Ana García",
     "tipo_usuario": "Premium",
-    "tiempo_llegada": 2.5,
+    "tiempo_llegada": 2.0,
+    "hora_fin": 120,
+    "ocupado": false,
     "rutina": [
-      {
-        "tipo_maquina_deseada": "Cardio",
-        "tiempo_uso": 15
-      },
-      {
-        "tipo_maquina_deseada": "Musculacion",
-        "tiempo_uso": 30
-      }
-    ]
+      { "tipo_maquina_deseada": "Cardio", "tiempo_uso": 15 },
+      { "tipo_maquina_deseada": "Musculacion", "tiempo_uso": 30 }
+    ],
+    "perfil": { "tipo": "Principiante", "energia": 100, "prob_descanso": 0.2 },
+    "problema": null
   },
   {
     "id": 2,
     "nombre": "Beto Pérez",
     "tipo_usuario": "Estándar",
     "tiempo_llegada": 5.0,
+    "hora_fin": 90,
+    "ocupado": false,
     "rutina": [
-      {
-        "tipo_maquina_deseada": "Musculacion",
-        "tiempo_uso": 45
-      }
-    ]
+      { "tipo_maquina_deseada": "Musculacion", "tiempo_uso": 45 }
+    ],
+    "perfil": { "tipo": "Avanzado", "energia": 200, "prob_descanso": 0.05 },
+    "problema": { "tipo": "LesionRodilla", "gravedad": 5 }
   },
   {
     "id": 3,
     "nombre": "Carla Ruiz",
     "tipo_usuario": "Estándar",
     "tiempo_llegada": 10.0,
+    "hora_fin": 100,
+    "ocupado": false,
     "rutina": [
-      {
-        "tipo_maquina_deseada": "Cardio",
-        "tiempo_uso": 20
-      },
-      {
-        "tipo_maquina_deseada": "Pilates",
-        "tiempo_uso": 60
-      },
-      {
-        "tipo_maquina_deseada": "Ducha",
-        "tiempo_uso": 10
-      }
-    ]
+      { "tipo_maquina_deseada": "Cardio", "tiempo_uso": 20 },
+      { "tipo_maquina_deseada": "Pilates", "tiempo_uso": 40 }
+    ],
+    "perfil": { "tipo": "Intermedio", "energia": 150, "prob_descanso": 0.1 },
+    "problema": null
+  },
+  {
+    "id": 4,
+    "nombre": "David 'La Roca'",
+    "tipo_usuario": "Premium",
+    "tiempo_llegada": 12.0,
+    "hora_fin": 200,
+    "ocupado": false,
+    "rutina": [
+      { "tipo_maquina_deseada": "Musculacion", "tiempo_uso": 60 },
+      { "tipo_maquina_deseada": "Musculacion", "tiempo_uso": 30 },
+      { "tipo_maquina_deseada": "Ducha", "tiempo_uso": 15 }
+    ],
+    "perfil": { "tipo": "Experto", "energia": 500, "prob_descanso": 0.01 },
+    "problema": null
+  },
+  {
+    "id": 5,
+    "nombre": "Elena Prisas",
+    "tipo_usuario": "Básico",
+    "tiempo_llegada": 15.0,
+    "hora_fin": 45,
+    "ocupado": false,
+    "rutina": [
+      { "tipo_maquina_deseada": "Cardio", "tiempo_uso": 25 }
+    ],
+    "perfil": { "tipo": "Principiante", "energia": 80, "prob_descanso": 0.0 },
+    "problema": null
+  },
+  {
+    "id": 6,
+    "nombre": "Fernando Senior",
+    "tipo_usuario": "Jubilado",
+    "tiempo_llegada": 18.0,
+    "hora_fin": 80,
+    "ocupado": false,
+    "rutina": [
+      { "tipo_maquina_deseada": "Pilates", "tiempo_uso": 30 },
+      { "tipo_maquina_deseada": "Ducha", "tiempo_uso": 10 }
+    ],
+    "perfil": { "tipo": "Senior", "energia": 60, "prob_descanso": 0.5 },
+    "problema": { "tipo": "DolorEspalda", "gravedad": 3 }
   }
 ]
