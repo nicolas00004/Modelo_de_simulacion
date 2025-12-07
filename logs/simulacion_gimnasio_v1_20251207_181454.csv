@@ -1,7 +1,0 @@
-tiempo_simulacion,tipo_evento,id_usuario,nombre,tipo_suscripcion,perfil_energia
-2.00,LLEGADA_CLIENTE,1,Ana García,Premium,100
-5.00,LLEGADA_CLIENTE,2,Beto Pérez,Estándar,200
-10.00,LLEGADA_CLIENTE,3,Carla Ruiz,Estándar,150
-12.00,LLEGADA_CLIENTE,4,David 'La Roca',Premium,500
-15.00,LLEGADA_CLIENTE,5,Elena Prisas,Básico,80
-18.00,LLEGADA_CLIENTE,6,Fernando Senior,Jubilado,60
