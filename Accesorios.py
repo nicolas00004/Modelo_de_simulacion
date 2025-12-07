@@ -1,20 +1,33 @@
-
-import usuario
-
-class Accesorios():
-    def __init__(self, nombre:str,disponibilidad:bool,durabilidad:int,registro_usuario:list[usuario]):
+class Accesorios:
+    def __init__(self, nombre: str, cantidad: int = 1, disponibilidad: bool = True,
+                 durabilidad: int = 100, **kwargs):
+        """
+        :param cantidad: Viene del JSON.
+        :param kwargs: Absorbe cualquier otro dato extra para que no falle.
+        """
         self.nombre = nombre
+        self.cantidad = cantidad
         self.disponibilidad = disponibilidad
         self.durabilidad = durabilidad
-        self.registro_usuario = registro_usuario
 
+        # Inicializamos la lista vacía aquí. No la pedimos al JSON.
+        self.registro_usuario = []
 
-    def sumar_usuario_registro(self, usuario: usuario.Usuario):
-        self.registro_usuario.insert(usuario)
+    def sumar_usuario_registro(self, usuario):
+        # CORRECCIÓN: Se usa append para añadir al final
+        self.registro_usuario.append(usuario)
 
     def usar(self):
-        self.disponibilidad=False
-        self.durabilidad=self.durabilidad-1
+        if self.cantidad > 0:
+            self.cantidad -= 1
+            self.durabilidad -= 1
+            # Si se acaban, ya no está disponible
+            if self.cantidad == 0:
+                self.disponibilidad = False
 
     def liberar(self):
-        self.disponibilidad=True
+        self.cantidad += 1
+        self.disponibilidad = True
+
+    def __repr__(self):
+        return f"<Accesorio: {self.nombre} (Quedan: {self.cantidad})>"

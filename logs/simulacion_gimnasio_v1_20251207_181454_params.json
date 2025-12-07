@@ -1,0 +1,5 @@
+{
+    "archivo_gym": "datos_gimnasio.json",
+    "archivo_clientes": "datos_clientes.json",
+    "tiempo_simulacion": 200
+}
