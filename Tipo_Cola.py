@@ -1,33 +1,62 @@
-
 import simpy
-from collections import deque
-class Cola:
-    def __init__(self, env: simpy.Environment, capacidad: int, tipo_cola: str,Cola:deque):
+
+
+class GestorCola:
+    def __init__(self, env: simpy.Environment, capacidad: int, tipo_cola: str = "FIFO"):
         self.env = env
         self.capacidad = capacidad
-        self.Cola = Cola
         self.tipo_cola = tipo_cola.upper()
-        if self.tipo_cola == "FIFO":
-            self.recurso = simpy.Resource(env, capacity=capacidad)
 
-        elif self.tipo_cola == "PRIORIDAD":
+        # Validamos los tipos soportados
+        tipos_validos = ["FIFO", "LIFO", "PRIORIDAD", "SJF"]
+        if self.tipo_cola not in tipos_validos:
+            raise ValueError(f"Tipo '{tipo_cola}' no válido. Usa: {tipos_validos}")
+
+        if self.tipo_cola == "FIFO":
+            # Para FIFO puro, el Resource normal es más rápido y eficiente
+            self.recurso = simpy.Resource(env, capacity=capacidad)
+        else:
+            # Para LIFO, SJF o PRIORIDAD usamos este
             self.recurso = simpy.PriorityResource(env, capacity=capacidad)
 
-        else:
-            raise ValueError(f"Tipo de cola '{tipo_cola}' no reconocido. Usa 'FIFO' o 'PRIORIDAD'")
+    def solicitar(self, usuario, duracion_ejercicio=0):
+        """
+        Genera la petición (request) con la prioridad calculada según el tipo de cola.
+        """
+        if self.tipo_cola == "FIFO":
+            # FIFO normal no necesita prioridad
+            return self.recurso.request()
 
+        prioridad_calc = 0
+
+        if self.tipo_cola == "PRIORIDAD":
+            # Asumimos que el usuario tiene un atributo 'nivel_prioridad'
+            # (1 = VIP Máximo, 100 = Normal)
+            prioridad_calc = getattr(usuario, 'nivel_prioridad', 100)
+
+        elif self.tipo_cola == "LIFO":
+            # LIFO: El último en llegar entra primero.
+            # SimPy ordena menor número = mayor prioridad.
+            # Usamos -env.now. Ejemplo:
+            # Cliente A llega en t=10. Prio = -10
+            # Cliente B llega en t=20. Prio = -20
+            # -20 es menor que -10, así que B pasa antes que A.
+            prioridad_calc = -self.env.now
+
+        elif self.tipo_cola == "SJF":
+            # Shortest Job First: El que tarda menos entra primero.
+            prioridad_calc = duracion_ejercicio
+
+        # Devolvemos la petición con la prioridad calculada
+        return self.recurso.request(priority=prioridad_calc)
+
+    # --- Métodos de Estadística ---
 
     def obtener_ocupacion(self):
-        """Devuelve cuántas máquinas están siendo usadas actualmente."""
         return self.recurso.count
 
     def obtener_gente_en_espera(self):
-        """Devuelve cuánta gente hay esperando en la cola."""
         return len(self.recurso.queue)
 
     def esta_lleno(self):
-        """Devuelve True si todas las máquinas están ocupadas."""
         return self.recurso.count >= self.capacidad
-
-    def porcentaje_ocupacion(self):
-        return (self.recurso.count / self.capacidad) * 100
