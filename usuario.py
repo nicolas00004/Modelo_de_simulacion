@@ -1,8 +1,8 @@
 import simpy
-from ejercicio import Ejercicio
 import Perfil
 import Gimnasio
 import Problema
+import Ejercicio
 
 class Usuario:
     def __init__(self, env: simpy.Environment, hora_fin: float, gimnasio: Gimnasio,

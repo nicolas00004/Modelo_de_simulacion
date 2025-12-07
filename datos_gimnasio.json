@@ -1,0 +1,58 @@
+{
+  "configuracion": {
+    "capacidad_maxima": 150,
+    "n_usuarios_inicial": 0
+  },
+  "maquinas": [
+    {
+      "nombre": "Cinta de Correr Pro",
+      "id": 101,
+      "tipo_maquina": "Cardio",
+      "tipo_cola": "FIFO",
+      "disponibilidad": true,
+      "durabilidad": 100
+    },
+    {
+      "nombre": "Press de Banca",
+      "id": 201,
+      "tipo_maquina": "Musculacion",
+      "tipo_cola": "FIFO",
+      "disponibilidad": true,
+      "durabilidad": 85
+    },
+    {
+      "nombre": "Elíptica V2",
+      "id": 102,
+      "tipo_maquina": "Cardio",
+      "tipo_cola": "FIFO",
+      "disponibilidad": false,
+      "durabilidad": 10
+    }
+  ],
+  "monitores": [
+    {
+      "nombre": "Carlos Pérez",
+      "id": "M01",
+      "especialidad": "Musculacion"
+    },
+    {
+      "nombre": "Ana García",
+      "id": "M02",
+      "especialidad": "Yoga y Pilates"
+    }
+  ],
+  "accesorios": [
+    {
+      "nombre": "Mancuernas 10kg",
+      "cantidad": 20
+    },
+    {
+      "nombre": "Esterillas",
+      "cantidad": 50
+    },
+    {
+      "nombre": "Bandas Elásticas",
+      "cantidad": 30
+    }
+  ]
+}

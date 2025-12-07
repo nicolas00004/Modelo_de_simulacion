@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1,
+    "nombre": "Ana García",
+    "tipo_usuario": "Premium",
+    "tiempo_llegada": 2.5,
+    "rutina": [
+      {
+        "tipo_maquina_deseada": "Cardio",
+        "tiempo_uso": 15
+      },
+      {
+        "tipo_maquina_deseada": "Musculacion",
+        "tiempo_uso": 30
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "nombre": "Beto Pérez",
+    "tipo_usuario": "Estándar",
+    "tiempo_llegada": 5.0,
+    "rutina": [
+      {
+        "tipo_maquina_deseada": "Musculacion",
+        "tiempo_uso": 45
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "nombre": "Carla Ruiz",
+    "tipo_usuario": "Estándar",
+    "tiempo_llegada": 10.0,
+    "rutina": [
+      {
+        "tipo_maquina_deseada": "Cardio",
+        "tiempo_uso": 20
+      },
+      {
+        "tipo_maquina_deseada": "Pilates",
+        "tiempo_uso": 60
+      },
+      {
+        "tipo_maquina_deseada": "Ducha",
+        "tiempo_uso": 10
+      }
+    ]
+  }
+]
