@@ -16,15 +16,21 @@ class Maquina:
         self.resource = None
         self.cola = []
 
-        # Configuración de averías (MTTF: Mean Time To Failure)
-        self.tiempo_entre_averias_min = kwargs.get('mttf_min', 200)
-        self.tiempo_entre_averias_max = kwargs.get('mttf_max', 400)
+        # Configuración de averías
+        # Según requisitos: "El material como bancos o mancuernas no sufren averías."
+        # "La probabilidad de avería de una máquina será de 0,1."
+        self.tiempo_entre_averias_min = kwargs.get('mttf_min', 200) # (Legacy)
+        
+        self.puede_romperse = True
+        n = self.nombre.lower()
+        if "banco" in n or "mancuerna" in n or "barra" in n or "jaula" in n:
+             self.puede_romperse = False
 
     def iniciar_simulacion(self, env):
         """Activa la máquina en el entorno de SimPy."""
         self.env = env
-        # Capacity=1: Solo una persona a la vez
-        self.resource = simpy.Resource(env, capacity=1)
+        # Capacity=2: Permite compartir (si count=1, user decide si entrar)
+        self.resource = simpy.Resource(env, capacity=2)
         # Vinculamos la lista 'cola' al sistema interno de SimPy
         self.cola = self.resource.queue
 
@@ -35,9 +41,21 @@ class Maquina:
     def control_averias(self):
         """Proceso en segundo plano que rompe la máquina aleatoriamente."""
         while True:
-            # 1. Tiempo de funcionamiento normal
-            tiempo_hasta_rotura = random.randint(self.tiempo_entre_averias_min, self.tiempo_entre_averias_max)
-            yield self.env.timeout(tiempo_hasta_rotura)
+            # 1. Chequeo diario (aprox cada 1440 min, o cada X min de simulación)
+            # Requisito: "La probabilidad de avería de una máquina será de 0,1."
+            # Asumimos que es una comprobación periódica (ej. diaria).
+            yield self.env.timeout(24 * 60) # Espera 1 día (aprox, aunque las horas operativas son menos)
+            
+            if not self.puede_romperse:
+                continue
+
+            if random.random() > 0.1:
+                # No se rompe hoy
+                continue
+                
+            # Si toca romperse:
+            # tiempo_hasta_rotura (legacy) -> lo hacemos inmediato tras el chequeo diario
+            pass
 
             # 2. Se produce la avería
             self.disponibilidad = False

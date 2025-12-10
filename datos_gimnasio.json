@@ -1,6 +1,6 @@
 {
   "configuracion": {
-    "capacidad_maxima": 60,
+    "capacidad_maxima": 50,
     "n_usuarios_inicial": 0
   },
   "maquinas": [
@@ -252,7 +252,6 @@
       "especialidad": "Musculacion"
     },
     {
-
       "nombre": "Ana García",
       "id": "M02",
       "especialidad": "Yoga y Pilates"

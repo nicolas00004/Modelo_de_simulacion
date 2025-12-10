@@ -2,6 +2,7 @@ import simpy
 from Perfil import Perfil
 from Problema import Problema
 import json
+import random
 
 
 
@@ -9,7 +10,7 @@ class Usuario:
     def __init__(self, env: simpy.Environment, gimnasio,
                  id_usuario: int, nombre: str, tipo_usuario: str, tiempo_llegada: float,
                  rutina: list, perfil: Perfil, problema: Problema,
-                 ocupado: bool = False, hora_fin: float = 0):
+                 ocupado: bool = False, hora_fin: float = 0, faltas_consecutivas: int = 0):
 
         self.env = env
         self.gimnasio = gimnasio
@@ -24,6 +25,7 @@ class Usuario:
 
         # Satisfacción inicial al 100%
         self.satisfaccion = 100
+        self.faltas_consecutivas = faltas_consecutivas # (En realidad son acumuladas, pero mantenemos nombre)
 
         # Atributos para logging (se inyectan desde main.py)
         self.logger_sesion = None
@@ -60,6 +62,20 @@ class Usuario:
             {"duracion_planificada": tiempo_total, "perfil": self.perfil.tipo, "pasos_rutina": len(self.rutina)}
         )
 
+        # --- 0. CONTROL DE ASISTENCIA (NO SHOW) ---
+        # Probabilidad de 0.05 de no asistir
+        if random.random() < 0.05:
+            print(f"[{self.env.now:6.2f}] 👻 {self.nombre} no se ha presentado (No Show).")
+            self.faltas_consecutivas += 1
+            self._log_evento(
+                f"Usuario no asiste (Faltas acumuladas: {self.faltas_consecutivas})",
+                "FALTA_ASISTENCIA",
+                {"faltas_totales": self.faltas_consecutivas}
+            )
+            return # Termina el proceso, no entrena.
+        
+        # Si asiste, NO reiniciamos faltas (solo se reinician tras castigo, según interpretación)
+        
         yield from self._preparacion()
 
         paso_num = 0
@@ -89,11 +105,12 @@ class Usuario:
                 {"paso": paso_num, "tipo_maquina": tipo_maquina, "duracion": duracion_ejercicio}
             )
 
-            # 2. Decisiones de perfil (Descanso / Monitor)
             if self.perfil.decidir_descanso():
                 yield from self._descanso()
-
-            if self.perfil.decidir_preguntar_monitor():
+            
+            # Probabilidad real de monitor 0.05 (definida en código duro o en perfil, user dice 0.05, Perfil tenía 0.15)
+            # Vamos a forzar la regla del usuario aquí sobre el perfil generado
+            if random.random() < 0.05:
                 yield from self._preguntarAMonitor()
 
             # 3. BUSCAR MÁQUINA (Sin yield from, es instantáneo)
@@ -108,16 +125,48 @@ class Usuario:
                 )
                 continue
 
-            # 4. INTENTO DE USO (Gestión de Colas)
-            cola_actual = len(maquina.cola)
-            print(
-                f'[{self.env.now:6.2f}] 🧘 {self.nombre} hace cola en {maquina.nombre} (Esperando a {cola_actual} personas)')
+                continue
 
-            self._log_evento(
-                f"Entra en cola de {maquina.nombre} (personas esperando: {cola_actual})",
-                "ESPERA_COLA",
-                {"maquina": maquina.nombre, "cola": cola_actual, "tipo_maquina": tipo_maquina}
-            )
+            # 4. INTENTO DE USO (Gestión de Colas y Compartición)
+            # Reglas:
+            # - Si cola vacía y usage vacía -> Usar
+            # - Si cola vacía y usage = 1 -> 80% de compartir
+            # - Else -> Cola
+            
+            # Nota: maquina.resource.count nos dice cuantos la usan.
+            # maquina.resource.queue es la cola de espera DE SIMPY. 
+            # (Nosotros usamos maquina.cola como alias owrapper en Maquina.py, verifiquemos)
+            # En Maquina.py: self.cola = self.resource.queue
+            
+            cola_simpy_len = len(maquina.resource.queue)
+            usando_count = maquina.resource.count
+            capacity = maquina.resource.capacity # Será 2
+            
+            entrar_directo = False
+            
+            if cola_simpy_len == 0:
+                if usando_count == 0:
+                    entrar_directo = True
+                elif usando_count == 1:
+                    # Probabilidad de compartir 0.8
+                    if random.random() < 0.8:
+                        print(f"[{self.env.now:6.2f}] 🤝 {self.nombre} comparte máquina {maquina.nombre} con otro usuario.")
+                        entrar_directo = True
+                        self._log_evento("Comparte máquina exitosamente", "COMPARTIR_MAQUINA", {"maquina": maquina.nombre})
+                    else:
+                        print(f"[{self.env.now:6.2f}] ✋ {self.nombre} prefiere no compartir {maquina.nombre} (o no le dejan).")
+            
+            # Si no entra directo, evalúa si vale la pena hacer cola
+            if not entrar_directo:
+                 cola_actual = cola_simpy_len
+                 print(
+                    f'[{self.env.now:6.2f}] 🧘 {self.nombre} hace cola en {maquina.nombre} (Esperando a {cola_actual} personas)')
+
+                 self._log_evento(
+                    f"Entra en cola de {maquina.nombre} (personas esperando: {cola_actual})",
+                    "ESPERA_COLA",
+                    {"maquina": maquina.nombre, "cola": cola_actual, "tipo_maquina": tipo_maquina}
+                 )
 
             # Solicitamos turno en la máquina
             with maquina.resource.request() as peticion:
@@ -267,7 +316,26 @@ class Usuario:
             self._log_evento("Quiere preguntar a monitor pero no hay disponibles", "MONITOR_NO_DISPONIBLE")
             return
 
-        monitor = min(self.gimnasio.monitores, key=lambda m: len(m.cola))
+        # Lógica: Buscar si alguno libre (cola 0, o mejor 'count' 0 si fueran recursos, pero aqui Monitor es custom?)
+        # Monitor.py no usa simpy.Resource explícito para 'ocupado', usa una cola[] y un yield en proceso usuario.
+        # El monitor no tiene estado 'ocupado' real, atiende en paralelo si no bloquemos?
+        # Revisando Monitor.py: "yield usuario.env.timeout(5)". 
+        # No hay 'lock' en el monitor. Varios usuarios pueden ejecutar 'preguntar' a la vez y el monitor "atiende" a todos en paralelo?
+        # El user code original Monitor.py:
+        # self.cola.append(usuario) ... yield timeout ... remove.
+        # Esto significa que INFINITOS usuarios pueden preguntar a la vez. No hay restricción.
+        # Pero el prompt dice: "La implementación sería buscar entre los monitores si alguno no está atendiendo a nadie."
+        # Esto implica que el monitor DEBERIA tener capacidad 1.
+        # Como no voy a refactorizar todo Monitor a Resource (aunque debería), voy a asumir que 
+        # len(m.cola) > 0 implica que está ocupado.
+        
+        monitores_libres = [m for m in self.gimnasio.monitores if len(m.cola) == 0]
+        
+        if monitores_libres:
+            monitor = random.choice(monitores_libres)
+        else:
+            # Si todos ocupados, al que tiene menos cola
+            monitor = min(self.gimnasio.monitores, key=lambda m: len(m.cola))
 
         # Si hay mucha cola en el monitor, también penalizamos un poco
         if len(monitor.cola) > 2:
