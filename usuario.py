@@ -3,6 +3,7 @@ from Perfil import Perfil
 from Problema import Problema
 import json
 import random
+from Maquina import MachineBrokenError
 
 
 
@@ -113,108 +114,137 @@ class Usuario:
             if random.random() < 0.05:
                 yield from self._preguntarAMonitor()
 
-            # 3. BUSCAR MÁQUINA (Sin yield from, es instantáneo)
-            maquina = self._buscarMaquinaPorTipo(tipo_maquina)
+            # 3. BUSCAR MÁQUINA (con reintentos por roturas)
+            while True:
+                maquina = self._buscarMaquinaPorTipo(tipo_maquina)
 
-            if maquina is None:
-                # Si no encuentra máquina (porque desistió por cola o no hay), pasa al siguiente
-                self._log_evento(
-                    f"No encuentra máquina tipo {tipo_maquina} disponible. Salta paso {paso_num}",
-                    "MAQUINA_NO_DISPONIBLE",
-                    {"tipo_buscado": tipo_maquina, "paso": paso_num}
-                )
-                continue
-
-                continue
-
-            # 4. INTENTO DE USO (Gestión de Colas y Compartición)
-            # Reglas:
-            # - Si cola vacía y usage vacía -> Usar
-            # - Si cola vacía y usage = 1 -> 80% de compartir
-            # - Else -> Cola
-            
-            # Nota: maquina.resource.count nos dice cuantos la usan.
-            # maquina.resource.queue es la cola de espera DE SIMPY. 
-            # (Nosotros usamos maquina.cola como alias owrapper en Maquina.py, verifiquemos)
-            # En Maquina.py: self.cola = self.resource.queue
-            
-            cola_simpy_len = len(maquina.resource.queue)
-            usando_count = maquina.resource.count
-            capacity = maquina.resource.capacity # Será 2
-            
-            entrar_directo = False
-            
-            if cola_simpy_len == 0:
-                if usando_count == 0:
-                    entrar_directo = True
-                elif usando_count == 1:
-                    # Probabilidad de compartir 0.8
-                    if random.random() < 0.8:
-                        print(f"[{self.env.now:6.2f}] 🤝 {self.nombre} comparte máquina {maquina.nombre} con otro usuario.")
-                        entrar_directo = True
-                        self._log_evento("Comparte máquina exitosamente", "COMPARTIR_MAQUINA", {"maquina": maquina.nombre})
-                    else:
-                        print(f"[{self.env.now:6.2f}] ✋ {self.nombre} prefiere no compartir {maquina.nombre} (o no le dejan).")
-            
-            # Si no entra directo, evalúa si vale la pena hacer cola
-            if not entrar_directo:
-                 cola_actual = cola_simpy_len
-                 print(
-                    f'[{self.env.now:6.2f}] 🧘 {self.nombre} hace cola en {maquina.nombre} (Esperando a {cola_actual} personas)')
-
-                 self._log_evento(
-                    f"Entra en cola de {maquina.nombre} (personas esperando: {cola_actual})",
-                    "ESPERA_COLA",
-                    {"maquina": maquina.nombre, "cola": cola_actual, "tipo_maquina": tipo_maquina}
-                 )
-
-            # Solicitamos turno en la máquina
-            with maquina.resource.request() as peticion:
-                tiempo_espera_inicio = self.env.now
-                yield peticion  # Se congela aquí esperando turno
-                tiempo_espera_real = self.env.now - tiempo_espera_inicio
-
-                # --- LÓGICA DE SATISFACCIÓN POR ESPERA ---
-                # Si espera más de 2 minutos, empieza a enfadarse (1 punto por minuto extra)
-                if tiempo_espera_real > 2:
-                    penalizacion = int(tiempo_espera_real - 2)
-                    self._actualizar_satisfaccion(-penalizacion)
-                # -----------------------------------------
-
-                self._log_evento(
-                    f"Accede a {maquina.nombre} (esperó {tiempo_espera_real:.1f} min)",
-                    "ACCESO_MAQUINA",
-                    {"maquina": maquina.nombre, "tiempo_espera": f"{tiempo_espera_real:.2f}"}
-                )
-
-                # Verificar si tras la espera aún tiene tiempo
-                if (self.hora_fin > 0) and (self.env.now + duracion_ejercicio > self.hora_fin):
-                    print(f'[{self.env.now:6.2f}] ⌛ {self.nombre}: Entré a la máquina pero ya no tengo tiempo.')
-                    self._actualizar_satisfaccion(-10)  # Penalización por frustración
-
+                if maquina is None:
+                    # Si no encuentra máquina (porque desistió por cola o no hay), pasa al siguiente
                     self._log_evento(
-                        f"Abandona {maquina.nombre} sin usarla (sin tiempo)",
-                        "ABANDONA_MAQUINA",
-                        {"maquina": maquina.nombre, "razon": "sin_tiempo"}
+                        f"No encuentra máquina tipo {tipo_maquina} disponible. Salta paso {paso_num}",
+                        "MAQUINA_NO_DISPONIBLE",
+                        {"tipo_buscado": tipo_maquina, "paso": paso_num}
                     )
-                    break
+                    break # Salimos del while (skip step)
 
-                print(f'[{self.env.now:6.2f}] 💪 {self.nombre} empieza en {maquina.nombre} ({duracion_ejercicio} min)')
-                self._log_evento(
-                    f"Comienza ejercicio en {maquina.nombre} ({duracion_ejercicio} min)",
-                    "USAR_MAQUINA",
-                    {"maquina": maquina.nombre, "duracion": duracion_ejercicio, "tipo_maquina": tipo_maquina}
-                )
+                # 4. INTENTO DE USO (Gestión de Colas y Compartición)
+                cola_simpy_len = len(maquina.resource.queue)
+                usando_count = maquina.resource.count
+                
+                entrar_directo = False
+                
+                if cola_simpy_len == 0:
+                    if usando_count == 0:
+                        entrar_directo = True
+                    elif usando_count == 1:
+                        # Probabilidad de compartir 0.8
+                        if random.random() < 0.8:
+                            print(f"[{self.env.now:6.2f}] 🤝 {self.nombre} comparte máquina {maquina.nombre} con otro usuario.")
+                            entrar_directo = True
+                            self._log_evento("Comparte máquina exitosamente", "COMPARTIR_MAQUINA", {"maquina": maquina.nombre})
+                        else:
+                            print(f"[{self.env.now:6.2f}] ✋ {self.nombre} prefiere no compartir {maquina.nombre} (o no le dejan).")
+                
+                # Si no entra directo, evalúa si vale la pena hacer cola
+                if not entrar_directo:
+                     cola_actual = cola_simpy_len
+                     print(
+                        f'[{self.env.now:6.2f}] 🧘 {self.nombre} hace cola en {maquina.nombre} (Esperando a {cola_actual} personas)')
 
-                # Realizamos el ejercicio
-                yield from maquina.hacer(self, duracion_ejercicio)
+                     self._log_evento(
+                        f"Entra en cola de {maquina.nombre} (personas esperando: {cola_actual})",
+                        "ESPERA_COLA",
+                        {"maquina": maquina.nombre, "cola": cola_actual, "tipo_maquina": tipo_maquina}
+                     )
 
-                print(f'[{self.env.now:6.2f}] 🏁 {self.nombre} terminó en {maquina.nombre}')
-                self._log_evento(
-                    f"Termina ejercicio en {maquina.nombre}",
-                    "FIN_MAQUINA",
-                    {"maquina": maquina.nombre, "tipo_maquina": tipo_maquina}
-                )
+                # Solicitamos turno en la máquina
+                try:
+                    # Nos registramos como esperando para recibir interrupciones
+                    maquina.usuarios_esperando.append(self)
+                    
+                    with maquina.resource.request() as peticion:
+                        tiempo_espera_inicio = self.env.now
+                        yield peticion  # Se congela aquí esperando turno
+                        
+                        # Si llegamos aquí, YA TENEMOS LA MÁQUINA. Nos borramos de la lista de espera
+                        if self in maquina.usuarios_esperando:
+                            maquina.usuarios_esperando.remove(self)
+                        
+                        tiempo_espera_real = self.env.now - tiempo_espera_inicio
+
+                        # --- LÓGICA DE SATISFACCIÓN POR ESPERA ---
+                        if tiempo_espera_real > 2:
+                            penalizacion = int(tiempo_espera_real - 2)
+                            self._actualizar_satisfaccion(-penalizacion)
+                        # -----------------------------------------
+
+                        self._log_evento(
+                            f"Accede a {maquina.nombre} (esperó {tiempo_espera_real:.1f} min)",
+                            "ACCESO_MAQUINA",
+                            {"maquina": maquina.nombre, "tiempo_espera": f"{tiempo_espera_real:.2f}"}
+                        )
+
+                        # Verificar si tras la espera aún tiene tiempo
+                        if (self.hora_fin > 0) and (self.env.now + duracion_ejercicio > self.hora_fin):
+                            print(f'[{self.env.now:6.2f}] ⌛ {self.nombre}: Entré a la máquina pero ya no tengo tiempo.')
+                            self._actualizar_satisfaccion(-10)  # Penalización por frustración
+
+                            self._log_evento(
+                                f"Abandona {maquina.nombre} sin usarla (sin tiempo)",
+                                "ABANDONA_MAQUINA",
+                                {"maquina": maquina.nombre, "razon": "sin_tiempo"}
+                            )
+                            break # Salimos del while (y luego del for loop abajo si hubiese break, pero aqui es break del while retry)
+                            # OJO: break aqui sale del while retry. Si sale del while retry, vuelve al for loop -> siguiente ejercicio?
+                            # El original tenia BREAK del for loop. AQUI debemos manejarlo.
+                            # Si no tiene tiempo, deberiamos romper la rutina.
+                            # Usaremos un flag.
+                            
+                        print(f'[{self.env.now:6.2f}] 💪 {self.nombre} empieza en {maquina.nombre} ({duracion_ejercicio} min)')
+                        self._log_evento(
+                            f"Comienza ejercicio en {maquina.nombre} ({duracion_ejercicio} min)",
+                            "USAR_MAQUINA",
+                            {"maquina": maquina.nombre, "duracion": duracion_ejercicio, "tipo_maquina": tipo_maquina}
+                        )
+
+                        # Realizamos el ejercicio
+                        yield from maquina.hacer(self, duracion_ejercicio)
+
+                        print(f'[{self.env.now:6.2f}] 🏁 {self.nombre} terminó en {maquina.nombre}')
+                        self._log_evento(
+                            f"Termina ejercicio en {maquina.nombre}",
+                            "FIN_MAQUINA",
+                            {"maquina": maquina.nombre, "tipo_maquina": tipo_maquina}
+                        )
+                        
+                        # Si completamos con éxito, salimos del while retry (pasamos al siguiente ejercicio)
+                        break 
+                
+                except simpy.Interrupt as i:
+                    # Capturamos interrupción (ej: máquina rota mientras esperaba)
+                    if self in maquina.usuarios_esperando:
+                        maquina.usuarios_esperando.remove(self)
+                        
+                    if i.cause == "MAQUINA_ROTA":
+                        print(f"[{self.env.now:6.2f}] 😲 {self.nombre}: {maquina.nombre} se ha roto mientras esperaba! Buscando otra...")
+                        self._actualizar_satisfaccion(-5)
+                        self._log_evento("Expulsado de cola por avería", "MAQUINA_ROTA_COLA", {"maquina": maquina.nombre})
+                        continue # Volvemos a empezar el while -> buscar otra máquina
+                    else:
+                        raise i # Otra interrupción desconocida
+
+                except MachineBrokenError:
+                    # Capturamos rotura MIENTRAS USABA
+                    print(f"[{self.env.now:6.2f}] 🤕 {self.nombre}: {maquina.nombre} se me rompió en las manos! Buscando otra...")
+                    self._actualizar_satisfaccion(-15) # Más enfado
+                    self._log_evento("Interrumpido por avería durante uso", "MAQUINA_ROTA_USO", {"maquina": maquina.nombre})
+                    continue # Volvemos a empezar el while -> buscar otra máquina
+                
+            # Fuera del while (completó ejercicio o desistió por falta de maquina)
+            # Revisar si hay que salir del loop rutina por falta de tiempo (que marcamos antes)
+            if (self.hora_fin > 0) and (self.env.now >= self.hora_fin):
+                 break # Break del for loop de rutina
+
 
         print(f'[{self.env.now:6.2f}] 👋 {self.nombre}: Rutina finalizada.')
         self._log_evento(
