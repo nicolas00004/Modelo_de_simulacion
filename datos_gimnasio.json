@@ -1,6 +1,6 @@
 {
   "configuracion": {
-    "capacidad_maxima": 150,
+    "capacidad_maxima": 50,
     "n_usuarios_inicial": 0
   },
   "maquinas": [
