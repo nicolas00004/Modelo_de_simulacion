@@ -1,0 +1,23 @@
+{
+  "simulacion": {
+    "duracion_sesion_minutos": 90,
+    "clientes_base_por_sesion": 50,
+    "usuarios_totales_iniciales": 400,
+    "probabilidad_baja_historica": 0.15,
+    "variacion_afluencia": 0.2
+  },
+  "satisfaccion": {
+    "umbral_baja_novato": 40,
+    "umbral_baja_medio": 25,
+    "umbral_baja_veterano": 10,
+    "penalizacion_espera_cola": 0.5,
+    "penalizacion_maquina_rota": 10,
+    "penalizacion_sin_maquina": 3,
+    "minutos_paciencia_cola": 4
+  },
+  "rutas": {
+    "archivo_clientes": "datos_clientes.json",
+    "archivo_gym": "datos_gimnasio.json",
+    "carpeta_logs": "logs_anuales"
+  }
+}
