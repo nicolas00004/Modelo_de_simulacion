@@ -87,9 +87,6 @@ class Usuario:
             if self.hora_fin > 0 and self.env.now >= self.hora_fin:
                 print(f'[{self.env.now:6.2f}] ⌛ {self.nombre}: Se acabó mi tiempo, me voy.')
 
-                # Penalización pequeña por no acabar la rutina
-                self._actualizar_satisfaccion(-5)
-
                 self._log_evento(
                     f"Tiempo límite alcanzado. Sale del gimnasio (paso {paso_num}/{len(self.rutina)})",
                     "TIEMPO_AGOTADO",
@@ -174,7 +171,7 @@ class Usuario:
 
                         # --- LÓGICA DE SATISFACCIÓN POR ESPERA ---
                         if tiempo_espera_real > 2:
-                            penalizacion = int(tiempo_espera_real - 2)
+                            penalizacion = int(tiempo_espera_real / 2)
                             self._actualizar_satisfaccion(-penalizacion)
                         # -----------------------------------------
 
@@ -236,7 +233,7 @@ class Usuario:
                 except MachineBrokenError:
                     # Capturamos rotura MIENTRAS USABA
                     print(f"[{self.env.now:6.2f}] 🤕 {self.nombre}: {maquina.nombre} se me rompió en las manos! Buscando otra...")
-                    self._actualizar_satisfaccion(-15) # Más enfado
+                    self._actualizar_satisfaccion(-10) # Más enfado
                     self._log_evento("Interrumpido por avería durante uso", "MAQUINA_ROTA_USO", {"maquina": maquina.nombre})
                     continue # Volvemos a empezar el while -> buscar otra máquina
                 
@@ -275,7 +272,7 @@ class Usuario:
 
         if not operativas:
             # Penalización grave: todas rotas
-            self._actualizar_satisfaccion(-10)
+            self._actualizar_satisfaccion(-7)
             self._log_evento(
                 f"Todas las máquinas {tipo_deseado} están fuera de servicio",
                 "BUSCAR_MAQUINA",
