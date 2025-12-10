@@ -278,7 +278,7 @@ def controlador_de_llegadas(env, lista_usuarios, admin_logs):
             "id_usuario": usuario.id, "nombre": usuario.nombre, "dia": nombre_dia,
             "sesion": sesion_del_dia + 1, "satisfaccion_inicio": usuario.satisfaccion
         })
-        env.process(usuario.entrenar(tiempo_total=duracion_real))
+        usuario.process = env.process(usuario.entrenar(tiempo_total=duracion_real))
 
 
 def gestor_semanal(env, admin_logs):

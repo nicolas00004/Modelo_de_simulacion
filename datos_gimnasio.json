@@ -9,240 +9,210 @@
       "id": 101,
       "tipo_maquina": "Cardio",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 98
+      "disponibilidad": true
     },
     {
       "nombre": "Cinta de Correr Pro 2",
       "id": 106,
       "tipo_maquina": "Cardio",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 100
+      "disponibilidad": true
     },
     {
       "nombre": "Cinta de Correr Pro 3",
       "id": 107,
       "tipo_maquina": "Cardio",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 95
+      "disponibilidad": true
     },
     {
       "nombre": "Elíptica V2 - A",
       "id": 102,
       "tipo_maquina": "Cardio",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 85
+      "disponibilidad": true
     },
     {
       "nombre": "Elíptica V2 - B",
       "id": 108,
       "tipo_maquina": "Cardio",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 90
+      "disponibilidad": true
     },
     {
       "nombre": "Bicicleta Estática 1",
       "id": 103,
       "tipo_maquina": "Cardio",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 92
+      "disponibilidad": true
     },
     {
       "nombre": "Bicicleta Estática 2",
       "id": 109,
       "tipo_maquina": "Cardio",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 96
+      "disponibilidad": true
     },
     {
       "nombre": "Máquina de Remo Concept",
       "id": 104,
       "tipo_maquina": "Cardio",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 78
+      "disponibilidad": true
     },
     {
       "nombre": "Escaladora StepMill (Reparada)",
       "id": 105,
       "tipo_maquina": "Cardio",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 100
+      "disponibilidad": true
     },
     {
       "nombre": "Bicicleta de Spinning",
       "id": 110,
       "tipo_maquina": "Cardio",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 88
+      "disponibilidad": true
     },
     {
       "nombre": "Press de Banca Plano A",
       "id": 201,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 85
+      "disponibilidad": true
     },
     {
       "nombre": "Press de Banca Plano B",
       "id": 217,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 100
+      "disponibilidad": true
     },
     {
       "nombre": "Press de Banca Inclinado",
       "id": 202,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 90
+      "disponibilidad": true
     },
     {
       "nombre": "Prensa de Piernas 45° A",
       "id": 203,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 90
+      "disponibilidad": true
     },
     {
       "nombre": "Prensa de Piernas 45° B",
       "id": 218,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 95
+      "disponibilidad": true
     },
     {
       "nombre": "Sentadilla Jaca (Hack Squat)",
       "id": 204,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 95
+      "disponibilidad": true
     },
     {
       "nombre": "Jalón al Pecho A",
       "id": 205,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 75
+      "disponibilidad": true
     },
     {
       "nombre": "Jalón al Pecho B",
       "id": 219,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 98
+      "disponibilidad": true
     },
     {
       "nombre": "Remo en Polea Baja",
       "id": 206,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 80
+      "disponibilidad": true
     },
     {
       "nombre": "Torre de Poleas (Cruce)",
       "id": 207,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 60
+      "disponibilidad": true
     },
     {
       "nombre": "Jaula de Sentadillas (Rack) A",
       "id": 208,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 98
+      "disponibilidad": true
     },
     {
       "nombre": "Jaula de Sentadillas (Rack) B",
       "id": 220,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 100
+      "disponibilidad": true
     },
     {
       "nombre": "Máquina Smith (Multipower)",
       "id": 209,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 85
+      "disponibilidad": true
     },
     {
       "nombre": "Extensión de Cuádriceps",
       "id": 210,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 92
+      "disponibilidad": true
     },
     {
       "nombre": "Curl Femoral Tumbado",
       "id": 211,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 88
+      "disponibilidad": true
     },
     {
       "nombre": "Máquina de Abductores",
       "id": 212,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 95
+      "disponibilidad": true
     },
     {
       "nombre": "Elevación de Gemelos",
       "id": 213,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 90
+      "disponibilidad": true
     },
     {
       "nombre": "Press de Hombros",
       "id": 214,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 85
+      "disponibilidad": true
     },
     {
       "nombre": "Dominadas Asistidas",
       "id": 215,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 92
+      "disponibilidad": true
     },
     {
       "nombre": "Banco Scott (Predicador)",
       "id": 216,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 95
+      "disponibilidad": true
     }
   ],
   "monitores": [
