@@ -5,9 +5,37 @@ import json
 import os
 import shutil
 from datetime import datetime
-from collections import Counter  # IMPORTANTE: Necesario para los nuevos reportes
+from collections import Counter
 from Gimnasio import Gimnasio
 from usuario import Usuario
+
+
+# --- IMPORTANTE: Si tienes un archivo Monitor.py, descomenta esto y borra la clase de abajo ---
+# from Monitor import Monitor
+
+# --- CLASE MONITOR (Por si acaso no la tienes a mano) ---
+class Monitor:
+    def __init__(self, env, id_monitor, nombre, especialidad):
+        self.env = env
+        self.id = id_monitor
+        self.nombre = nombre
+        self.especialidad = especialidad
+        # Recurso: El monitor es como una máquina, atiende a 1 persona a la vez
+        self.cola = []  # Para gestión visual
+        self.resource = simpy.Resource(env, capacity=1)
+
+    def preguntar(self, usuario):
+        """Simula el proceso de atender una duda."""
+        with self.resource.request() as req:
+            # Entra en la cola (visual)
+            self.cola.append(usuario)
+            yield req
+            # Sale de la cola y es atendido
+            self.cola.remove(usuario)
+
+            # Tiempo de la duda (2 a 5 minutos)
+            tiempo_atencion = random.randint(2, 5)
+            yield self.env.timeout(tiempo_atencion)
 
 
 # --- 1. CLASE LOGS ---
@@ -24,14 +52,12 @@ class Logs:
             f.write(f"--- Log iniciado: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n")
 
         self.cabeceras_escritas = False
-        # Definimos columnas fijas para el CSV
         self.fieldnames = [
             "tiempo_simulacion", "tipo_evento", "id_usuario", "nombre",
             "dia", "sesion", "satisfaccion_actual", "satisfaccion_inicio",
             "maquina", "duracion", "cola_tamano", "extra_info"
         ]
 
-        # Inicializar CSV
         with open(self.archivo_csv, mode='w', newline='', encoding='utf-8') as f:
             writer = csv.DictWriter(f, fieldnames=self.fieldnames)
             writer.writeheader()
@@ -44,9 +70,8 @@ class Logs:
         with open(self.archivo_log, "a", encoding="utf-8") as f:
             f.write(linea)
 
-    def registrar_datos(self, datos: dict):
+    def registrar_datos(self, datos):
         try:
-            # Filtramos solo las columnas que conocemos
             datos_filtrados = {k: v for k, v in datos.items() if k in self.fieldnames}
             with open(self.archivo_csv, mode='a', newline='', encoding='utf-8') as f:
                 writer = csv.DictWriter(f, fieldnames=self.fieldnames)
@@ -54,9 +79,21 @@ class Logs:
         except Exception as e:
             self.log(f"Error CSV: {e}", "ERROR")
 
-    def log_parametros(self, **kwargs):
-        self.log("--- SETUP ---")
-        for k, v in kwargs.items(): self.log(f"{k}: {v}")
+    def cerrar_log_con_resumen(self, reservados, asistentes, monitor_nombre):
+        no_presentados = reservados - asistentes
+        porcentaje = (asistentes / reservados * 100) if reservados > 0 else 0
+        resumen = (
+            f"\n----------------------------------------\n"
+            f"📊 RESUMEN DE SESIÓN\n"
+            f"👮 Monitor de turno : {monitor_nombre}\n"
+            f"📅 Reservas Totales : {reservados}\n"
+            f"✅ Asistentes Reales: {asistentes}\n"
+            f"❌ No Presentados   : {no_presentados}\n"
+            f"📈 Tasa Asistencia  : {porcentaje:.1f}%\n"
+            f"----------------------------------------\n"
+        )
+        with open(self.archivo_log, "a", encoding="utf-8") as f:
+            f.write(resumen)
 
 
 # --- 2. ADMINISTRADOR DE LOGS ---
@@ -64,10 +101,12 @@ class AdministradorDeLogs:
     def __init__(self, carpeta_semana):
         self.logger_actual = None
         self.carpeta_semana = carpeta_semana
+        self.contador_asistentes = 0
 
     def cambiar_sesion(self, nombre_dia, numero_sesion):
         ruta_base = f"{self.carpeta_semana}/{nombre_dia}/Sesion_{numero_sesion}"
         self.logger_actual = Logs(ruta_base)
+        self.contador_asistentes = 0
 
     def iniciar_log_general(self):
         ruta_base = f"{self.carpeta_semana}/Log_Resumen_Semana"
@@ -78,6 +117,13 @@ class AdministradorDeLogs:
 
     def registrar_datos(self, datos):
         if self.logger_actual: self.logger_actual.registrar_datos(datos)
+
+    def registrar_entrada_usuario(self):
+        self.contador_asistentes += 1
+
+    def finalizar_sesion_actual(self, total_reservados, monitor_nombre):
+        if self.logger_actual:
+            self.logger_actual.cerrar_log_con_resumen(total_reservados, self.contador_asistentes, monitor_nombre)
 
 
 # --- 3. PERFIL GENERADO ---
@@ -103,7 +149,21 @@ class PerfilGenerado:
     def tiempo_uso_accesorio(self): return random.randint(5, 15)
 
 
-# --- CONFIGURACIÓN ANUAL ---
+# --- CONFIGURACIÓN DE PERSONAL (MONITORES) ---
+STAFF_INVIERNO = [
+    {"id": "M01", "nombre": "Carlos (Turno A)", "especialidad": "Musculación"},
+    {"id": "M02", "nombre": "Ana (Turno A)", "especialidad": "Pilates"},
+    {"id": "M03", "nombre": "Luis (Turno A)", "especialidad": "Crossfit"},
+    {"id": "M04", "nombre": "Laura (Turno A)", "especialidad": "Cardio"}
+]
+
+STAFF_PRIMAVERA = [
+    {"id": "M05", "nombre": "Pedro (Turno B)", "especialidad": "Powerlifting"},
+    {"id": "M06", "nombre": "Sofia (Turno B)", "especialidad": "Yoga"},
+    {"id": "M07", "nombre": "Miguel (Turno B)", "especialidad": "Funcional"},
+    {"id": "M08", "nombre": "Elena (Turno B)", "especialidad": "Zumba"}
+]
+
 CALENDARIO_ACADEMICO = [
     {"mes": "Septiembre", "semanas": 4, "peso_afluencia": 1.2, "nuevas_altas_aprox": 50, "abierto": True},
     {"mes": "Octubre", "semanas": 4, "peso_afluencia": 1.0, "nuevas_altas_aprox": 20, "abierto": True},
@@ -180,7 +240,6 @@ def generar_lote_socios(cantidad, id_inicial, mes_origen):
         perfil = {"tipo": "Fuerza" if random.random() < 0.7 else "Mixto", "energia": random.randint(100, 500),
                   "prob_descanso": random.uniform(0.1, 0.3)}
 
-        # Bajas históricas solo al inicio
         es_baja_historica = False
         if mes_origen == "Carga_Inicial":
             es_baja_historica = random.random() < 0.10
@@ -230,14 +289,10 @@ def inyectar_socios_nuevos(socios_actuales, cantidad_objetivo, mes_actual):
 def generar_flota_semanal_reutilizando(env, gimnasio, base_datos_socios, semana_absoluta, factor_afluencia):
     usuarios_programados = []
 
-    socios_activos = []
-    for s in base_datos_socios:
-        if not s.get("activo", True): continue
-        if s.get("castigado_hasta_semana_absoluta", 0) >= semana_absoluta: continue
-        socios_activos.append(s)
-
+    socios_activos = [s for s in base_datos_socios if
+                      s.get("activo", True) and s.get("castigado_hasta_semana_absoluta", 0) < semana_absoluta]
     cupo_sesion = int(CLIENTES_BASE_POR_SESION * factor_afluencia)
-    print(f"   ℹ️ Socios activos DB: {len(socios_activos)} | Afluencia {factor_afluencia}x -> Cupo: ~{cupo_sesion}")
+    print(f"   ℹ️ Socios activos DB: {len(socios_activos)} | Cupo: ~{cupo_sesion} pax/sesión")
 
     if not socios_activos: return []
 
@@ -257,7 +312,6 @@ def generar_flota_semanal_reutilizando(env, gimnasio, base_datos_socios, semana_
 
             for datos_socio in asistentes_hoy:
                 socios_reservados_hoy.add(datos_socio['id'])
-
                 llegada = inicio_sesion_global + random.uniform(0, 10)
                 fin = llegada + random.randint(60, 90)
                 perfil = PerfilGenerado(datos_socio["perfil"])
@@ -283,7 +337,6 @@ def controlador_de_llegadas(env, lista_usuarios, admin_logs):
 
         dia_actual_idx = int(env.now // MINUTOS_MAXIMOS_POR_DIA)
         if dia_actual_idx >= len(DIAS_SEMANA): break
-
         nombre_dia = DIAS_SEMANA[dia_actual_idx]
         minuto_del_dia = env.now % MINUTOS_MAXIMOS_POR_DIA
         sesion_del_dia = int(minuto_del_dia // DURACION_SESION)
@@ -292,134 +345,102 @@ def controlador_de_llegadas(env, lista_usuarios, admin_logs):
         usuario.dia_sesion = nombre_dia
         usuario.numero_sesion = sesion_del_dia + 1
 
-        admin_logs.log(f"➕ {usuario.nombre} entra (Sat: {usuario.satisfaccion})", "LLEGADA")
-
-        # --- AQUÍ ESTÁ EL CAMBIO PARA EL CSV ---
+        admin_logs.log(f"➕ {usuario.nombre} entra", "LLEGADA")
         admin_logs.registrar_datos({
-            "tiempo_simulacion": f"{env.now:.2f}",
-            "tipo_evento": "LLEGADA",
-            "id_usuario": usuario.id,
-            "nombre": usuario.nombre,
-            "dia": nombre_dia,
-            "sesion": sesion_del_dia + 1,
-
-            "satisfaccion_actual": usuario.satisfaccion,  # Rellenamos la columna estándar
-            "satisfaccion_inicio": usuario.satisfaccion,  # Mantenemos la específica también
-
-            "extra_info": f"Perfil: {usuario.perfil.tipo}"
+            "tiempo_simulacion": f"{env.now:.2f}", "tipo_evento": "LLEGADA",
+            "id_usuario": usuario.id, "nombre": usuario.nombre, "dia": nombre_dia,
+            "sesion": sesion_del_dia + 1, "satisfaccion_actual": usuario.satisfaccion,
+            "satisfaccion_inicio": usuario.satisfaccion
         })
 
+        admin_logs.registrar_entrada_usuario()
         usuario.process = env.process(usuario.entrenar(tiempo_total=90))
 
-def gestor_semanal(env, admin_logs):
+
+def gestor_semanal(env, admin_logs, lista_visitas, mi_gimnasio, equipo_monitores):
+    """
+    Controla el reloj y asigna el monitor correspondiente (UNO SOLO) por sesión.
+    """
     for dia in DIAS_SEMANA:
         num_sesiones = obtener_sesiones_por_dia(dia)
         print(f"   📅 {dia} ({num_sesiones} sesiones)...")
+
         for i in range(1, num_sesiones + 1):
             admin_logs.cambiar_sesion(dia, i)
-            admin_logs.log(f"🔔 INICIO SESIÓN {i}", "SESION")
+
+            # --- ASIGNACIÓN DE MONITOR ÚNICO PARA ESTA SESIÓN ---
+            # Rotamos los 4 monitores del equipo: 1, 2, 3, 4, 1, 2...
+            datos_monitor = equipo_monitores[(i - 1) % 4]
+            monitor_activo = Monitor(env, datos_monitor["id"], datos_monitor["nombre"], datos_monitor["especialidad"])
+
+            # ¡IMPORTANTE! Asignamos una lista con UN SOLO monitor al gimnasio
+            mi_gimnasio.monitores = [monitor_activo]
+
+            admin_logs.log(f"🔔 INICIO SESIÓN {i} - {dia} (Monitor: {monitor_activo.nombre})", "SESION")
+
+            # Calcular reservas para el reporte
+            min_inicio_dia = DIAS_SEMANA.index(dia) * MINUTOS_MAXIMOS_POR_DIA
+            t_inicio = min_inicio_dia + ((i - 1) * DURACION_SESION)
+            t_fin = t_inicio + DURACION_SESION
+            reservas_sesion = len([u for u in lista_visitas if t_inicio <= u.tiempo_llegada < t_fin])
+
             yield env.timeout(DURACION_SESION)
+
             admin_logs.log(f"🔕 FIN SESIÓN {i}", "SESION")
+            admin_logs.finalizar_sesion_actual(reservas_sesion, monitor_activo.nombre)
 
         restante = (SESIONES_MAXIMAS_DIARIAS - num_sesiones) * DURACION_SESION
         if restante > 0: yield env.timeout(restante)
 
 
-# --- FUNCIÓN DE REPORTES AVANZADA ---
 def generar_conclusiones_semanales(lista_visitas, carpeta_destino, mes, semana_relativa, semana_absoluta, socios_db):
-    ruta_json = f"{carpeta_destino}/Reporte_INTEGRAL_{mes}_S{semana_relativa}.json"
-    ruta_txt = f"{carpeta_destino}/Resumen_Ejecutivo_{mes}_S{semana_relativa}.txt"
+    ruta = f"{carpeta_destino}/Reporte_{mes}_Semana_{semana_relativa}.json"
+    ultima_satisfaccion_map = {}
+    satisfaccion_total = 0
+    resultados = []
 
-    print(f"📊 Generando reporte avanzado de la semana {semana_relativa}...")
+    for u in lista_visitas:
+        resultados.append({"id": u.id, "satisfaccion_final": u.satisfaccion})
+        satisfaccion_total += u.satisfaccion
+        ultima_satisfaccion_map[u.id] = {"satisfaccion": u.satisfaccion, "faltas": u.faltas_consecutivas}
 
-    # 1. ANÁLISIS DE AFLUENCIA
-    total_visitas = len(lista_visitas)
-    dias = [u.dia_sesion for u in lista_visitas]
-    conteo_dias = Counter(dias)
-    dia_pico = conteo_dias.most_common(1)[0] if conteo_dias else ("N/A", 0)
-
-    # 2. ANÁLISIS DE SATISFACCIÓN
-    satisfaccion_total = sum(u.satisfaccion for u in lista_visitas)
-    promedio_sat = satisfaccion_total / total_visitas if total_visitas > 0 else 0
-
-    sat_buckets = {
-        "Excelente (90-100)": len([u for u in lista_visitas if u.satisfaccion >= 90]),
-        "Buena (60-89)": len([u for u in lista_visitas if 60 <= u.satisfaccion < 90]),
-        "En Riesgo (20-59)": len([u for u in lista_visitas if 20 <= u.satisfaccion < 60]),
-        "Crítica (<20)": len([u for u in lista_visitas if u.satisfaccion < 20])
-    }
-
-    # 3. GESTIÓN DE BAJAS Y BD
-    bajas_esta_semana = 0
-    lista_bajas_detalle = []
-    usuarios_en_riesgo_detalle = []
-    castigos_semana = 0
-
-    mapa_visitas = {u.id: u.satisfaccion for u in lista_visitas}
+    bajas = 0
+    lista_bajas = []
 
     for socio in socios_db:
-        if socio["id"] in mapa_visitas:
-            nueva_sat = mapa_visitas[socio["id"]]
-            socio["satisfaccion_acumulada"] = nueva_sat
-            socio["faltas_consecutivas"] = 0
+        if socio["id"] in ultima_satisfaccion_map:
+            datos = ultima_satisfaccion_map[socio["id"]]
+            socio["satisfaccion_acumulada"] = datos["satisfaccion"]
+            socio["faltas_consecutivas"] = datos["faltas"]
 
-        elif socio.get("activo", True):
-            socio["faltas_consecutivas"] = socio.get("faltas_consecutivas", 0) + 1
+            if socio["faltas_consecutivas"] >= 3:
+                socio["faltas_consecutivas"] = 0
+                socio["castigado_hasta_semana_absoluta"] = semana_absoluta + 1
 
-        # Bloqueo por Faltas (3 semanas sin venir)
-        if socio.get("faltas_consecutivas", 0) >= 3 and socio.get("activo", True):
-            socio["faltas_consecutivas"] = 0
-            # Se bloquea por 2 semanas
-            socio["castigado_hasta_semana_absoluta"] = semana_absoluta + 2
-            castigos_semana += 1
+            if socio["satisfaccion_acumulada"] < 20 and socio.get("activo", True):
+                socio["activo"] = False
+                socio["fecha_baja"] = f"{mes} - Semana {semana_relativa}"
+                bajas += 1
+                lista_bajas.append({"id": socio["id"], "nombre": socio["nombre"], "motivo": "Insatisfacción"})
+                print(f"      ❌ BAJA: {socio['nombre']}")
 
-        # Baja por Churn (< 20 puntos)
-        if socio["satisfaccion_acumulada"] < 20 and socio.get("activo", True):
-            socio["activo"] = False
-            socio["fecha_baja"] = f"{mes} - S{semana_relativa}"
-            bajas_esta_semana += 1
-            lista_bajas_detalle.append({
-                "id": socio["id"], "nombre": socio["nombre"],
-                "motivo": "Insatisfacción", "sat_final": socio["satisfaccion_acumulada"]
-            })
-            print(f"      ❌ BAJA: {socio['nombre']} (Sat: {socio['satisfaccion_acumulada']})")
+    promedio = satisfaccion_total / len(lista_visitas) if lista_visitas else 0
 
-        elif 20 <= socio["satisfaccion_acumulada"] < 50 and socio.get("activo", True):
-            usuarios_en_riesgo_detalle.append(
-                {"id": socio["id"], "nombre": socio["nombre"], "sat": socio["satisfaccion_acumulada"]})
-
+    informe = {
+        "periodo": f"{mes} - Semana {semana_relativa}",
+        "resumen": {"visitas": len(lista_visitas), "satisfaccion_media": round(promedio, 2), "bajas": bajas},
+        "bajas_detalle": lista_bajas
+    }
+    with open(ruta, "w", encoding="utf-8") as f:
+        json.dump(informe, f, indent=4, ensure_ascii=False)
     with open("datos_clientes.json", "w", encoding="utf-8") as f:
         json.dump(socios_db, f, indent=4, ensure_ascii=False)
 
-    informe_completo = {
-        "periodo": {"mes": mes, "semana": semana_relativa, "absoluta": semana_absoluta},
-        "kpis": {
-            "visitas": total_visitas, "sat_media": round(promedio_sat, 2),
-            "bajas": bajas_esta_semana, "castigos_ausencia": castigos_semana
-        },
-        "afluencia": {"dia_pico": dia_pico, "detalle_dias": dict(conteo_dias)},
-        "satisfaccion": sat_buckets,
-        "listados": {"bajas": lista_bajas_detalle, "riesgo": usuarios_en_riesgo_detalle}
-    }
-
-    with open(ruta_json, "w", encoding="utf-8") as f:
-        json.dump(informe_completo, f, indent=4, ensure_ascii=False)
-
-    # Resumen TXT
-    with open(ruta_txt, "w", encoding="utf-8") as f:
-        f.write(f"=== REPORTE: {mes.upper()} S{semana_relativa} ===\n")
-        f.write(f"Visitas: {total_visitas} | Sat Media: {promedio_sat:.1f}\n")
-        f.write(f"Bajas: {bajas_esta_semana} | Castigos: {castigos_semana}\n\n")
-        f.write("--- SATISFACCIÓN ---\n")
-        for k, v in sat_buckets.items(): f.write(f"{k}: {v}\n")
-        f.write(f"\nDia Pico: {dia_pico[0]} ({dia_pico[1]} pax)\n")
-
-    return bajas_esta_semana
+    return bajas
 
 
 def main():
     print("🚀 INICIANDO AÑO ACADÉMICO (SEP - JUN)...")
-
     carpeta_raiz = "logs_anuales"
     if os.path.exists(carpeta_raiz): shutil.rmtree(carpeta_raiz)
     os.makedirs(carpeta_raiz)
@@ -448,6 +469,11 @@ def main():
         if altas > 0:
             socios_db = inyectar_socios_nuevos(socios_db, altas, mes)
 
+        # --- SELECCIÓN DEL EQUIPO DE MONITORES SEGÚN LA ÉPOCA ---
+        meses_invierno = ["Septiembre", "Octubre", "Noviembre", "Diciembre", "Enero"]
+        equipo_monitores = STAFF_INVIERNO if mes in meses_invierno else STAFF_PRIMAVERA
+        print(f"   👮 Equipo de Monitores: {'Invierno' if mes in meses_invierno else 'Primavera'}")
+
         for semana in range(1, semanas_mes + 1):
             semana_absoluta += 1
             print(f"   ► Semana {semana}")
@@ -472,7 +498,10 @@ def main():
                     break
 
                 env.process(controlador_de_llegadas(env, visitas, admin_logs))
-                env.process(gestor_semanal(env, admin_logs))
+
+                # --- PASAMOS EL EQUIPO DE MONITORES CORRECTO AL GESTOR ---
+                env.process(gestor_semanal(env, admin_logs, visitas, mi_gimnasio, equipo_monitores))
+
                 env.run(until=TIEMPO_SEMANAL_SIMULACION)
 
                 mi_gimnasio.cerrar_gimnasio()
@@ -483,7 +512,9 @@ def main():
                 print(f"❌ Error crítico: {e}")
                 raise e
 
-    print(f"\n🎓 AÑO ACADÉMICO FINALIZADO. Bajas totales: {total_bajas_anuales}")
+    print(f"\n🎓 AÑO ACADÉMICO FINALIZADO.")
+    print(f"📉 Total Bajas: {total_bajas_anuales}")
+    print(f"📂 Resultados en '{carpeta_raiz}'")
 
 
 if __name__ == "__main__":
