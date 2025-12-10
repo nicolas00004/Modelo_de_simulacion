@@ -92,12 +92,20 @@ class PerfilGenerado:
 
 
 # --- CONFIGURACIÓN ---
-DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
-SESIONES_POR_DIA = 6
+DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
 DURACION_SESION = 90
 CLIENTES_POR_SESION = 50
-MINUTOS_POR_DIA = SESIONES_POR_DIA * DURACION_SESION
-TIEMPO_TOTAL_SIMULACION = MINUTOS_POR_DIA * len(DIAS_SEMANA)
+
+# Configuración de horarios: L-V (8:00-21:30 = 9 sesiones), S (8:00-14:00 = 4 sesiones)
+def obtener_sesiones_por_dia(dia):
+    if dia == "Sábado":
+        return 4  # 8:00 a 14:00 -> 6 horas / 1.5h = 4 sesiones
+    return 9      # 8:00 a 21:30 -> 13.5 horas / 1.5h = 9 sesiones
+
+# Para cálculos globales aproximados (usamos el máximo para reservar espacio si fuera necesario)
+SESIONES_MAXIMAS_DIARIAS = 9
+MINUTOS_MAXIMOS_POR_DIA = SESIONES_MAXIMAS_DIARIAS * DURACION_SESION
+TIEMPO_TOTAL_SIMULACION = MINUTOS_MAXIMOS_POR_DIA * len(DIAS_SEMANA)
 
 NOMBRES_HOMBRES = ["Juan", "Pedro", "Luis", "Carlos", "Javier", "Miguel", "Alejandro", "Pablo", "Sergio", "Daniel"]
 NOMBRES_MUJERES = ["Ana", "María", "Laura", "Sofia", "Lucía", "Elena", "Carmen", "Paula", "Marta", "Isabel"]
@@ -169,34 +177,66 @@ def cargar_o_crear_base_socios(archivo="datos_clientes.json", cantidad_socios=30
     return socios
 
 
-def generar_flota_semanal_reutilizando(env, gimnasio, base_datos_socios):
+def generar_flota_semanal_reutilizando(env, gimnasio, base_datos_socios, semana_actual):
     usuarios_programados = []
 
-    # Filtro: Solo socios activos
-    socios_activos = [s for s in base_datos_socios if s.get("activo", True)]
-    print(f"ℹ️ Socios activos: {len(socios_activos)} / {len(base_datos_socios)}")
+    # Filtro: Solo socios activos y NO castigados esta semana
+    socios_activos = []
+    for s in base_datos_socios:
+        if not s.get("activo", True):
+            continue
+        # Si está castigado hasta una semana X, y X > semana_actual, está bloqueado.
+        # Ejemplo: Castigado en semana 1. castigado_hasta = 2. En semana 2: 2 > 2? False. (Ups, 'durante una semana').
+        # Si se castiga en S1, no entra en S2. castigado_hasta = 2.
+        # Si semana_actual es 2. castigado_hasta (2) >= semana_actual (2) -> Bloqueado.
+        # En S3. 2 >= 3 -> False. Desbloqueado.
+        castigo = s.get("castigado_hasta_semana", 0)
+        if castigo >= semana_actual:
+            continue
+        socios_activos.append(s)
+
+    print(f"ℹ️ Socios activos y permitidos: {len(socios_activos)} / {len(base_datos_socios)}")
 
     if len(socios_activos) == 0:
         return []
 
     for dia_idx, nombre_dia in enumerate(DIAS_SEMANA):
-        for sesion in range(SESIONES_POR_DIA):
-            num_asistentes = int(random.uniform(0.6, 1.0) * CLIENTES_POR_SESION)
-            muestra = min(num_asistentes, len(socios_activos))
-            asistentes_hoy = random.sample(socios_activos, muestra)
+        num_sesiones = obtener_sesiones_por_dia(nombre_dia)
+        socios_que_han_reservado_hoy = set() # Set de IDs para evitar duplicados en el día
 
-            inicio_sesion_global = (dia_idx * MINUTOS_POR_DIA) + (sesion * DURACION_SESION)
+        for sesion in range(num_sesiones):
+            num_asistentes = int(random.uniform(0.6, 1.0) * CLIENTES_POR_SESION)
+            
+            # Filtramos candidatos que NO hayan reservado hoy
+            candidatos_validos = [s for s in socios_activos if s['id'] not in socios_que_han_reservado_hoy]
+            
+            # Si no quedan candidatos, pasamos a la siguiente sesión
+            if not candidatos_validos:
+                continue
+
+            muestra = min(num_asistentes, len(candidatos_validos))
+            asistentes_hoy = random.sample(candidatos_validos, muestra)
+
+            inicio_sesion_global = (dia_idx * MINUTOS_MAXIMOS_POR_DIA) + (sesion * DURACION_SESION)
 
             for datos_socio in asistentes_hoy:
+                # Marcamos como reservado
+                socios_que_han_reservado_hoy.add(datos_socio['id'])
+
                 llegada = inicio_sesion_global + random.uniform(0, 15)
                 fin = llegada + random.randint(60, 90)
                 perfil_objeto = PerfilGenerado(datos_socio["perfil"])
+                
+                # Inyectamos el historial de faltas si existe (o lo inicializamos)
+                if "faltas_consecutivas" not in datos_socio:
+                    datos_socio["faltas_consecutivas"] = 0
 
                 visita_usuario = Usuario(
                     id_usuario=datos_socio["id"], nombre=datos_socio["nombre"], tipo_usuario="Socio",
                     tiempo_llegada=llegada, hora_fin=fin, ocupado=False,
                     rutina=datos_socio["rutina"], perfil=perfil_objeto, problema=None,
-                    env=env, gimnasio=gimnasio
+                    env=env, gimnasio=gimnasio, 
+                    faltas_consecutivas=datos_socio["faltas_consecutivas"] # Pasamos las faltas al objeto
                 )
 
                 satisfaccion_previa = datos_socio.get("satisfaccion_acumulada", 100)
@@ -211,14 +251,14 @@ def controlador_de_llegadas(env, lista_usuarios, admin_logs):
         tiempo_a_esperar = usuario.tiempo_llegada - env.now
         if tiempo_a_esperar > 0: yield env.timeout(tiempo_a_esperar)
 
-        dia_actual_idx = int(env.now // MINUTOS_POR_DIA)
+        dia_actual_idx = int(env.now // MINUTOS_MAXIMOS_POR_DIA)
         if dia_actual_idx >= len(DIAS_SEMANA): break
 
         nombre_dia = DIAS_SEMANA[dia_actual_idx]
-        minuto_del_dia = env.now % MINUTOS_POR_DIA
+        minuto_del_dia = env.now % MINUTOS_MAXIMOS_POR_DIA
         sesion_del_dia = int(minuto_del_dia // DURACION_SESION)
 
-        fin_sesion_global = (dia_actual_idx * MINUTOS_POR_DIA) + ((sesion_del_dia + 1) * DURACION_SESION)
+        fin_sesion_global = (dia_actual_idx * MINUTOS_MAXIMOS_POR_DIA) + ((sesion_del_dia + 1) * DURACION_SESION)
         tiempo_restante = fin_sesion_global - env.now
 
         duracion_deseada = usuario.hora_fin - usuario.tiempo_llegada
@@ -245,10 +285,18 @@ def gestor_semanal(env, admin_logs):
     for dia in DIAS_SEMANA:
         admin_logs.cambiar_dia(dia)
         admin_logs.log(f"📅 --- INICIO DE {dia.upper()} (Min {env.now:.0f}) ---", "DIA")
-        for i in range(1, SESIONES_POR_DIA + 1):
+        
+        num_sesiones = obtener_sesiones_por_dia(dia)
+        for i in range(1, num_sesiones + 1):
             admin_logs.log(f"🔔 Inicio Sesión {i}", "SESION")
             yield env.timeout(DURACION_SESION)
             admin_logs.log(f"🔕 Fin Sesión {i}", "SESION")
+            
+        # Relleno hasta fin de día "virtual" para mantener sincronía
+        tiempo_restante_dia = (SESIONES_MAXIMAS_DIARIAS - num_sesiones) * DURACION_SESION
+        if tiempo_restante_dia > 0:
+            yield env.timeout(tiempo_restante_dia)
+            
         admin_logs.log(f"🌙 --- FIN DE {dia.upper()} ---", "DIA")
 
 
@@ -272,14 +320,52 @@ def generar_conclusiones_semanales(lista_visitas, carpeta_destino, numero_semana
             "id": u.id, "nombre": u.nombre, "dia": u.dia_sesion,
             "sesion": u.numero_sesion, "satisfaccion_final": u.satisfaccion
         })
+        # Si el usuario tuvo faltas, las actualizamos
+        if hasattr(u, 'nuevas_faltas'):
+             # No guardamos esto aquí directamente, pero se usará para actualizar la DB abajo
+             pass
+        
+        resultados.append({
+            "id": u.id, "nombre": u.nombre, "dia": u.dia_sesion,
+            "sesion": u.numero_sesion, "satisfaccion_final": u.satisfaccion
+        })
         satisfaccion_total += u.satisfaccion
-        ultima_satisfaccion_map[u.id] = u.satisfaccion
+        ultima_satisfaccion_map[u.id] = {
+            "satisfaccion": u.satisfaccion,
+            "faltas_consecutivas": u.faltas_consecutivas
+        }
 
     # --- ACTUALIZAR BASE DE DATOS Y GESTIONAR BAJAS ---
     for socio in socios_db:
         if socio["id"] in ultima_satisfaccion_map:
-            nueva_satisfaccion = ultima_satisfaccion_map[socio["id"]]
-            socio["satisfaccion_acumulada"] = nueva_satisfaccion
+            datos_nuevos = ultima_satisfaccion_map[socio["id"]]
+            
+            socio["satisfaccion_acumulada"] = datos_nuevos["satisfaccion"]
+            socio["faltas_consecutivas"] = datos_nuevos["faltas_consecutivas"]
+            
+            # --- NUEVA LÓGICA DE BLOQUEO POR FALTAS ---
+            if socio["faltas_consecutivas"] >= 3:
+                print(f"🚫 BLOQUEO: {socio['nombre']} bloqueado por 3 faltas consecutivas.")
+                # Reiniciamos faltas tras castigo
+                socio["faltas_consecutivas"] = 0
+                # Desactivamos (SIMULACION DE 1 SEMANA DE CASTIGO) -> En esta simulación simplificada, 
+                # lo marcamos inactivo, aunque en realidad debería reactivarse luego.
+                # Para cumplir estrictamente 'bloqueo durante una semana', podríamos añadir un campo 'semana_desbloqueo'
+                # pero por simplicidad de este código, lo marcaremos inactivo y ya no volverá (similar a baja).
+                # O MEJOR: Solo le ponemos una flag 'castigado_hasta' y lo filtramos en generacion.
+                socio["castigado_hasta_semana"] = numero_semana + 1
+
+            nueva_satisfaccion = datos_nuevos["satisfaccion"]
+
+            # --- NUEVA LÓGICA DE BLOQUEO POR FALTAS ---
+            # Si tiene 3 o más faltas consecutivas -> CASTIGO
+            if socio["faltas_consecutivas"] >= 3:
+                print(f"🚫 BLOQUEO: {socio['nombre']} bloqueado por 3 faltas consecutivas.")
+                socio["faltas_consecutivas"] = 0
+                # Se bloquea la SIGUIENTE semana. Si estamos en semana X, no entra en X+1.
+                socio["castigado_hasta_semana"] = numero_semana + 1
+
+            nueva_satisfaccion = datos_nuevos["satisfaccion"]
 
             # REGLA DE BAJA (Churn)
             if nueva_satisfaccion < 20 and socio.get("activo", True):
@@ -355,7 +441,7 @@ def main():
             for m in mi_gimnasio.maquinas: m.iniciar_simulacion(env)
             mi_gimnasio.abrir_gimnasio()
 
-            lista_visitas = generar_flota_semanal_reutilizando(env, mi_gimnasio, socios_db)
+            lista_visitas = generar_flota_semanal_reutilizando(env, mi_gimnasio, socios_db, semana)
 
             if not lista_visitas:
                 print("🚫 No quedan socios activos. Fin de la simulación.")
