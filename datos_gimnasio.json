@@ -1,32 +1,64 @@
 {
   "configuracion": {
-    "capacidad_maxima": 50,
+    "capacidad_maxima": 60,
     "n_usuarios_inicial": 0
   },
   "maquinas": [
     {
-      "nombre": "Cinta de Correr Pro",
+      "nombre": "Cinta de Correr Pro 1",
       "id": 101,
+      "tipo_maquina": "Cardio",
+      "tipo_cola": "FIFO",
+      "disponibilidad": true,
+      "durabilidad": 98
+    },
+    {
+      "nombre": "Cinta de Correr Pro 2",
+      "id": 106,
       "tipo_maquina": "Cardio",
       "tipo_cola": "FIFO",
       "disponibilidad": true,
       "durabilidad": 100
     },
     {
-      "nombre": "Elíptica V2",
-      "id": 102,
-      "tipo_maquina": "Cardio",
-      "tipo_cola": "FIFO",
-      "disponibilidad": true,
-      "durabilidad": 10
-    },
-    {
-      "nombre": "Bicicleta Estática Recumbente",
-      "id": 103,
+      "nombre": "Cinta de Correr Pro 3",
+      "id": 107,
       "tipo_maquina": "Cardio",
       "tipo_cola": "FIFO",
       "disponibilidad": true,
       "durabilidad": 95
+    },
+    {
+      "nombre": "Elíptica V2 - A",
+      "id": 102,
+      "tipo_maquina": "Cardio",
+      "tipo_cola": "FIFO",
+      "disponibilidad": true,
+      "durabilidad": 85
+    },
+    {
+      "nombre": "Elíptica V2 - B",
+      "id": 108,
+      "tipo_maquina": "Cardio",
+      "tipo_cola": "FIFO",
+      "disponibilidad": true,
+      "durabilidad": 90
+    },
+    {
+      "nombre": "Bicicleta Estática 1",
+      "id": 103,
+      "tipo_maquina": "Cardio",
+      "tipo_cola": "FIFO",
+      "disponibilidad": true,
+      "durabilidad": 92
+    },
+    {
+      "nombre": "Bicicleta Estática 2",
+      "id": 109,
+      "tipo_maquina": "Cardio",
+      "tipo_cola": "FIFO",
+      "disponibilidad": true,
+      "durabilidad": 96
     },
     {
       "nombre": "Máquina de Remo Concept",
@@ -34,23 +66,39 @@
       "tipo_maquina": "Cardio",
       "tipo_cola": "FIFO",
       "disponibilidad": true,
-      "durabilidad": 80
+      "durabilidad": 78
     },
     {
-      "nombre": "Escaladora StepMill",
+      "nombre": "Escaladora StepMill (Reparada)",
       "id": 105,
       "tipo_maquina": "Cardio",
       "tipo_cola": "FIFO",
-      "disponibilidad": false,
-      "durabilidad": 0
+      "disponibilidad": true,
+      "durabilidad": 100
     },
     {
-      "nombre": "Press de Banca Plano",
+      "nombre": "Bicicleta de Spinning",
+      "id": 110,
+      "tipo_maquina": "Cardio",
+      "tipo_cola": "FIFO",
+      "disponibilidad": true,
+      "durabilidad": 88
+    },
+    {
+      "nombre": "Press de Banca Plano A",
       "id": 201,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
       "disponibilidad": true,
       "durabilidad": 85
+    },
+    {
+      "nombre": "Press de Banca Plano B",
+      "id": 217,
+      "tipo_maquina": "Musculacion",
+      "tipo_cola": "FIFO",
+      "disponibilidad": true,
+      "durabilidad": 100
     },
     {
       "nombre": "Press de Banca Inclinado",
@@ -61,12 +109,20 @@
       "durabilidad": 90
     },
     {
-      "nombre": "Prensa de Piernas 45°",
+      "nombre": "Prensa de Piernas 45° A",
       "id": 203,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
       "disponibilidad": true,
       "durabilidad": 90
+    },
+    {
+      "nombre": "Prensa de Piernas 45° B",
+      "id": 218,
+      "tipo_maquina": "Musculacion",
+      "tipo_cola": "FIFO",
+      "disponibilidad": true,
+      "durabilidad": 95
     },
     {
       "nombre": "Sentadilla Jaca (Hack Squat)",
@@ -77,7 +133,7 @@
       "durabilidad": 95
     },
     {
-      "nombre": "Jalón al Pecho (Polea Alta)",
+      "nombre": "Jalón al Pecho A",
       "id": 205,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
@@ -85,7 +141,15 @@
       "durabilidad": 75
     },
     {
-      "nombre": "Remo en Polea Baja (Gironda)",
+      "nombre": "Jalón al Pecho B",
+      "id": 219,
+      "tipo_maquina": "Musculacion",
+      "tipo_cola": "FIFO",
+      "disponibilidad": true,
+      "durabilidad": 98
+    },
+    {
+      "nombre": "Remo en Polea Baja",
       "id": 206,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
@@ -93,7 +157,7 @@
       "durabilidad": 80
     },
     {
-      "nombre": "Torre de Poleas Ajustable (Cruce)",
+      "nombre": "Torre de Poleas (Cruce)",
       "id": 207,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
@@ -101,12 +165,20 @@
       "durabilidad": 60
     },
     {
-      "nombre": "Jaula de Sentadillas (Rack)",
+      "nombre": "Jaula de Sentadillas (Rack) A",
       "id": 208,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
       "disponibilidad": true,
       "durabilidad": 98
+    },
+    {
+      "nombre": "Jaula de Sentadillas (Rack) B",
+      "id": 220,
+      "tipo_maquina": "Musculacion",
+      "tipo_cola": "FIFO",
+      "disponibilidad": true,
+      "durabilidad": 100
     },
     {
       "nombre": "Máquina Smith (Multipower)",
@@ -133,7 +205,7 @@
       "durabilidad": 88
     },
     {
-      "nombre": "Máquina de Abductores/Aductores",
+      "nombre": "Máquina de Abductores",
       "id": 212,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
@@ -141,7 +213,7 @@
       "durabilidad": 95
     },
     {
-      "nombre": "Elevación de Gemelos de Pie",
+      "nombre": "Elevación de Gemelos",
       "id": 213,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
@@ -149,7 +221,7 @@
       "durabilidad": 90
     },
     {
-      "nombre": "Press de Hombros (Militar)",
+      "nombre": "Press de Hombros",
       "id": 214,
       "tipo_maquina": "Musculacion",
       "tipo_cola": "FIFO",
@@ -188,64 +260,69 @@
       "nombre": "Luis 'Crossfit' Torres",
       "id": "M03",
       "especialidad": "Entrenamiento Funcional"
+    },
+    {
+      "nombre": "Laura Danza",
+      "id": "M04",
+      "especialidad": "Zumba y Cardio"
     }
   ],
   "accesorios": [
     {
       "nombre": "Mancuernas 5kg",
-      "cantidad": 20
-    },
-    {
-      "nombre": "Mancuernas 10kg",
-      "cantidad": 20
-    },
-    {
-      "nombre": "Mancuernas 15kg",
-      "cantidad": 15
-    },
-    {
-      "nombre": "Mancuernas 25kg+",
-      "cantidad": 10
-    },
-    {
-      "nombre": "Esterillas",
-      "cantidad": 50
-    },
-    {
-      "nombre": "Bandas Elásticas",
       "cantidad": 30
     },
     {
+      "nombre": "Mancuernas 10kg",
+      "cantidad": 30
+    },
+    {
+      "nombre": "Mancuernas 15kg",
+      "cantidad": 20
+    },
+    {
+      "nombre": "Mancuernas 25kg+",
+      "cantidad": 15
+    },
+    {
+      "nombre": "Esterillas",
+      "cantidad": 60
+    },
+    {
+      "nombre": "Bandas Elásticas",
+      "cantidad": 40
+    },
+    {
       "nombre": "Kettlebells 12kg",
-      "cantidad": 12
+      "cantidad": 15
     },
     {
       "nombre": "Balones Medicinales",
-      "cantidad": 10
+      "cantidad": 12
     },
     {
       "nombre": "Barras Olímpicas",
-      "cantidad": 10
+      "cantidad": 15
     },
     {
       "nombre": "Barra Z",
-      "cantidad": 5
-    },
-    {
-      "nombre": "Discos de Peso (Varios)",
-      "cantidad": 150
-    },
-    {
-      "nombre": "Cinturones de Levantamiento",
       "cantidad": 8
     },
     {
+      "nombre": "Discos de Peso (Varios)",
+      "cantidad": 300
+    },
+    {
+      "nombre": "Cinturones de Levantamiento",
+      "cantidad": 12
+    },
+    {
       "nombre": "Cuerdas para Tríceps",
-      "cantidad": 6
+      "cantidad": 8
     },
     {
       "nombre": "Agarres Triángulo",
-      "cantidad": 4
+      "cantidad": 6
     }
   ]
 }
