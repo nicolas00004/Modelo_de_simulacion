@@ -29,39 +29,75 @@ class GestorSocios:
     def __init__(self, config):
         self.config = config
         self.ruta_db = config.datos["rutas"]["archivo_clientes"]
-        self.nombres_h = ["Juan", "Pedro", "Luis", "Carlos", "Javier", "Miguel", "Alejandro", "Pablo"]
-        self.nombres_m = ["Ana", "María", "Laura", "Sofia", "Lucía", "Elena", "Carmen", "Paula"]
-        self.apellidos = ["García", "López", "Martínez", "Sánchez", "Pérez", "Gómez", "Ruiz"]
+
+        self.nombres_h = ["Juan", "Pedro", "Luis", "Carlos", "Javier", "Miguel", "Alejandro", "Pablo", "Sergio",
+                          "Daniel"]
+        self.nombres_m = ["Ana", "María", "Laura", "Sofia", "Lucía", "Elena", "Carmen", "Paula", "Marta", "Isabel"]
+        self.apellidos = ["García", "López", "Martínez", "Sánchez", "Pérez", "Gómez", "Ruiz", "Hernández", "Díaz",
+                          "Moreno"]
+
+        # Mapa para convertir nombre de mes a número
+        self.mapa_meses = {
+            "Enero": 1, "Febrero": 2, "Marzo": 3, "Abril": 4, "Mayo": 5, "Junio": 6,
+            "Julio": 7, "Agosto": 8, "Septiembre": 9, "Octubre": 10, "Noviembre": 11, "Diciembre": 12
+        }
 
     def generar_rutina(self, genero):
         rutina = []
         opciones = ["Musculacion_Pierna", "Musculacion_Torso", "Cardio"]
+        # Probabilidades según género
         pesos = [0.60, 0.20, 0.20] if genero == "Femenino" else [0.20, 0.60, 0.20]
+
         for _ in range(random.randint(4, 6)):
             tipo = random.choices(opciones, weights=pesos, k=1)[0]
             tiempo = random.randint(15, 30) if tipo == "Cardio" else random.randint(20, 40)
             rutina.append({"tipo_maquina_deseada": tipo, "tiempo_uso": tiempo})
         return rutina
 
+    def _obtener_fecha_simulada(self, mes_origen):
+        """Genera una fecha DD-MM-AAAA basada en el mes de alta."""
+        if mes_origen == "Carga_Inicial":
+            mes_num = 8  # Agosto (Pretemporada)
+        else:
+            mes_num = self.mapa_meses.get(mes_origen, 9)  # Por defecto Septiembre si falla
+
+        dia = random.randint(1, 28)  # Para evitar problemas con febrero
+        # Usamos un año genérico, ej: 2023
+        return f"{dia:02d}-{mes_num:02d}-2023"
+
     def generar_lote(self, cantidad, id_inicial, mes_origen):
         lote = []
         prob_baja = self.config.datos["simulacion"]["probabilidad_baja_historica"]
+
         for i in range(cantidad):
             nuevo_id = id_inicial + i
             es_mujer = random.random() < 0.5
             genero = "Femenino" if es_mujer else "Masculino"
             nombre = f"{random.choice(self.nombres_m if es_mujer else self.nombres_h)} {random.choice(self.apellidos)}-{nuevo_id}"
 
+            # Lógica de baja histórica
             es_baja = (mes_origen == "Carga_Inicial" and random.random() < prob_baja)
             activo = not es_baja
             satisfaccion = random.randint(0, 19) if es_baja else 100
+            fecha_baja = "Pre-Simulacion" if es_baja else None
+
+            # --- NUEVO: Generar fecha de alta ---
+            fecha_alta = self._obtener_fecha_simulada(mes_origen)
 
             socio = {
-                "id": nuevo_id, "nombre": nombre, "genero": genero, "tipo_usuario": "Socio",
-                "mes_alta": mes_origen, "rutina": self.generar_rutina(genero),
+                "id": nuevo_id,
+                "nombre": nombre,
+                "genero": genero,
+                "tipo_usuario": "Socio",
+                "mes_alta": mes_origen,  # Para lógica interna (antigüedad)
+                "fecha_alta": fecha_alta,  # Para visualización en JSON
+                "rutina": self.generar_rutina(genero),
                 "perfil": {"tipo": "Fuerza", "energia": 300, "prob_descanso": 0.2},
-                "satisfaccion_acumulada": satisfaccion, "activo": activo, "faltas_consecutivas": 0,
-                "castigado_hasta_semana_absoluta": 0, "fecha_baja": "Pre-Simulacion" if es_baja else None
+                "satisfaccion_acumulada": satisfaccion,
+                "activo": activo,
+                "faltas_consecutivas": 0,
+                "castigado_hasta_semana_absoluta": 0,
+                "fecha_baja": fecha_baja
             }
             lote.append(socio)
         return lote
@@ -69,17 +105,26 @@ class GestorSocios:
     def inicializar_db(self):
         if os.path.exists(self.ruta_db): os.remove(self.ruta_db)
         cantidad = self.config.datos["simulacion"].get("usuarios_totales_iniciales", 300)
+
         print(f"🆕 Generando BASE INICIAL: {cantidad} socios...")
         socios = self.generar_lote(cantidad, 1, "Carga_Inicial")
-        with open(self.ruta_db, "w", encoding="utf-8") as f: json.dump(socios, f, indent=4)
+
+        with open(self.ruta_db, "w", encoding="utf-8") as f:
+            json.dump(socios, f, indent=4, ensure_ascii=False)
         return socios
 
     def inyectar_nuevos(self, socios_actuales, cantidad, mes):
         if cantidad <= 0: return socios_actuales
+
         real = int(random.uniform(0.8, 1.2) * cantidad)
         last_id = socios_actuales[-1]["id"]
-        print(f"✨ ALTAS {mes}: +{real} socios.")
+
+        print(f"✨ ALTAS {mes.upper()}: +{real} socios.")
         nuevos = self.generar_lote(real, last_id + 1, mes)
+
         socios_actuales.extend(nuevos)
-        with open(self.ruta_db, "w", encoding="utf-8") as f: json.dump(socios_actuales, f, indent=4)
+
+        with open(self.ruta_db, "w", encoding="utf-8") as f:
+            json.dump(socios_actuales, f, indent=4, ensure_ascii=False)
+
         return socios_actuales
