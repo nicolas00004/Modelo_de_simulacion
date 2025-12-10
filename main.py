@@ -5,17 +5,14 @@ import json
 import os
 import shutil
 from datetime import datetime
+from collections import Counter  # IMPORTANTE: Necesario para los nuevos reportes
 from Gimnasio import Gimnasio
 from usuario import Usuario
 
 
-# --- 1. CLASE LOGS (MEJORADA PARA CSV ROBUSTO) ---
+# --- 1. CLASE LOGS ---
 class Logs:
     def __init__(self, ruta_completa_sin_ext):
-        """
-        Genera .log y .csv.
-        Define columnas fijas para evitar errores de escritura en el CSV.
-        """
         carpeta = os.path.dirname(ruta_completa_sin_ext)
         if not os.path.exists(carpeta):
             os.makedirs(carpeta)
@@ -23,27 +20,18 @@ class Logs:
         self.archivo_log = f"{ruta_completa_sin_ext}.log"
         self.archivo_csv = f"{ruta_completa_sin_ext}.csv"
 
-        # Inicializar LOG de texto
         with open(self.archivo_log, "w", encoding="utf-8") as f:
-            f.write(f"--- Sesión iniciada: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n")
+            f.write(f"--- Log iniciado: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n")
 
-        # Inicializar CSV con columnas estándar
-        # Definimos TODAS las posibles columnas que usaremos
+        self.cabeceras_escritas = False
+        # Definimos columnas fijas para el CSV
         self.fieldnames = [
-            "tiempo_simulacion",
-            "tipo_evento",
-            "id_usuario",
-            "nombre",
-            "dia",
-            "sesion",
-            "satisfaccion_actual",
-            "maquina",  # Para eventos de uso
-            "duracion",  # Para tiempo uso/espera
-            "cola_tamano",  # Para eventos de cola
-            "extra_info"  # Para cualquier otro dato
+            "tiempo_simulacion", "tipo_evento", "id_usuario", "nombre",
+            "dia", "sesion", "satisfaccion_actual", "satisfaccion_inicio",
+            "maquina", "duracion", "cola_tamano", "extra_info"
         ]
 
-        # Creamos el archivo y escribimos cabeceras
+        # Inicializar CSV
         with open(self.archivo_csv, mode='w', newline='', encoding='utf-8') as f:
             writer = csv.DictWriter(f, fieldnames=self.fieldnames)
             writer.writeheader()
@@ -56,26 +44,19 @@ class Logs:
         with open(self.archivo_log, "a", encoding="utf-8") as f:
             f.write(linea)
 
-    def log_parametros(self, **kwargs):
-        self.log("--- CONFIGURACIÓN ---", "SETUP")
-        for k, v in kwargs.items():
-            self.log(f"{k}: {v}", "PARAM")
-        self.log("---------------------", "SETUP")
-
     def registrar_datos(self, datos: dict):
-        """
-        Guarda una fila en el CSV. Filtra las claves que no están en fieldnames
-        para evitar errores, y rellena las vacías.
-        """
         try:
-            # Filtramos solo los datos que coinciden con nuestras columnas definidas
+            # Filtramos solo las columnas que conocemos
             datos_filtrados = {k: v for k, v in datos.items() if k in self.fieldnames}
-
             with open(self.archivo_csv, mode='a', newline='', encoding='utf-8') as f:
                 writer = csv.DictWriter(f, fieldnames=self.fieldnames)
                 writer.writerow(datos_filtrados)
         except Exception as e:
-            self.log(f"Error escribiendo CSV: {e}", "ERROR")
+            self.log(f"Error CSV: {e}", "ERROR")
+
+    def log_parametros(self, **kwargs):
+        self.log("--- SETUP ---")
+        for k, v in kwargs.items(): self.log(f"{k}: {v}")
 
 
 # --- 2. ADMINISTRADOR DE LOGS ---
@@ -85,7 +66,6 @@ class AdministradorDeLogs:
         self.carpeta_semana = carpeta_semana
 
     def cambiar_sesion(self, nombre_dia, numero_sesion):
-        # Estructura: Semana / Dia / Sesion_X
         ruta_base = f"{self.carpeta_semana}/{nombre_dia}/Sesion_{numero_sesion}"
         self.logger_actual = Logs(ruta_base)
 
@@ -98,9 +78,6 @@ class AdministradorDeLogs:
 
     def registrar_datos(self, datos):
         if self.logger_actual: self.logger_actual.registrar_datos(datos)
-
-    def log_parametros(self, **kwargs):
-        if self.logger_actual: self.logger_actual.log_parametros(**kwargs)
 
 
 # --- 3. PERFIL GENERADO ---
@@ -155,12 +132,9 @@ SESIONES_MAXIMAS_DIARIAS = 9
 MINUTOS_MAXIMOS_POR_DIA = SESIONES_MAXIMAS_DIARIAS * DURACION_SESION
 TIEMPO_SEMANAL_SIMULACION = MINUTOS_MAXIMOS_POR_DIA * len(DIAS_SEMANA)
 
-NOMBRES_HOMBRES = ["Juan", "Pedro", "Luis", "Carlos", "Javier", "Miguel", "Alejandro", "Pablo", "Sergio", "Daniel",
-                   "Antonio", "Jose", "Manuel"]
-NOMBRES_MUJERES = ["Ana", "María", "Laura", "Sofia", "Lucía", "Elena", "Carmen", "Paula", "Marta", "Isabel", "Cristina",
-                   "Sara", "Julia"]
-APELLIDOS = ["García", "López", "Martínez", "Sánchez", "Pérez", "Gómez", "Ruiz", "Hernández", "Díaz", "Moreno",
-             "Jiménez", "Rodríguez"]
+NOMBRES_HOMBRES = ["Juan", "Pedro", "Luis", "Carlos", "Javier", "Miguel", "Alejandro", "Pablo", "Sergio", "Daniel"]
+NOMBRES_MUJERES = ["Ana", "María", "Laura", "Sofia", "Lucía", "Elena", "Carmen", "Paula", "Marta", "Isabel"]
+APELLIDOS = ["García", "López", "Martínez", "Sánchez", "Pérez", "Gómez", "Ruiz", "Hernández", "Díaz", "Moreno"]
 
 
 def clasificar_maquinas_por_grupo_muscular(gimnasio):
@@ -206,6 +180,7 @@ def generar_lote_socios(cantidad, id_inicial, mes_origen):
         perfil = {"tipo": "Fuerza" if random.random() < 0.7 else "Mixto", "energia": random.randint(100, 500),
                   "prob_descanso": random.uniform(0.1, 0.3)}
 
+        # Bajas históricas solo al inicio
         es_baja_historica = False
         if mes_origen == "Carga_Inicial":
             es_baja_historica = random.random() < 0.10
@@ -277,10 +252,12 @@ def generar_flota_semanal_reutilizando(env, gimnasio, base_datos_socios, semana_
 
             muestra = min(num_asistentes, len(candidatos))
             asistentes_hoy = random.sample(candidatos, muestra)
+
             inicio_sesion_global = (dia_idx * MINUTOS_MAXIMOS_POR_DIA) + (sesion * DURACION_SESION)
 
             for datos_socio in asistentes_hoy:
                 socios_reservados_hoy.add(datos_socio['id'])
+
                 llegada = inicio_sesion_global + random.uniform(0, 10)
                 fin = llegada + random.randint(60, 90)
                 perfil = PerfilGenerado(datos_socio["perfil"])
@@ -306,6 +283,7 @@ def controlador_de_llegadas(env, lista_usuarios, admin_logs):
 
         dia_actual_idx = int(env.now // MINUTOS_MAXIMOS_POR_DIA)
         if dia_actual_idx >= len(DIAS_SEMANA): break
+
         nombre_dia = DIAS_SEMANA[dia_actual_idx]
         minuto_del_dia = env.now % MINUTOS_MAXIMOS_POR_DIA
         sesion_del_dia = int(minuto_del_dia // DURACION_SESION)
@@ -314,9 +292,9 @@ def controlador_de_llegadas(env, lista_usuarios, admin_logs):
         usuario.dia_sesion = nombre_dia
         usuario.numero_sesion = sesion_del_dia + 1
 
-        admin_logs.log(f"➕ {usuario.nombre} entra", "LLEGADA")
+        admin_logs.log(f"➕ {usuario.nombre} entra (Sat: {usuario.satisfaccion})", "LLEGADA")
 
-        # --- AQUÍ REGISTRAMOS LA LLEGADA EN EL CSV DE LA SESIÓN ---
+        # --- AQUÍ ESTÁ EL CAMBIO PARA EL CSV ---
         admin_logs.registrar_datos({
             "tiempo_simulacion": f"{env.now:.2f}",
             "tipo_evento": "LLEGADA",
@@ -324,22 +302,21 @@ def controlador_de_llegadas(env, lista_usuarios, admin_logs):
             "nombre": usuario.nombre,
             "dia": nombre_dia,
             "sesion": sesion_del_dia + 1,
-            "satisfaccion_actual": usuario.satisfaccion,
-            "extra_info": "Inicio Rutina"
+
+            "satisfaccion_actual": usuario.satisfaccion,  # Rellenamos la columna estándar
+            "satisfaccion_inicio": usuario.satisfaccion,  # Mantenemos la específica también
+
+            "extra_info": f"Perfil: {usuario.perfil.tipo}"
         })
 
         usuario.process = env.process(usuario.entrenar(tiempo_total=90))
-
 
 def gestor_semanal(env, admin_logs):
     for dia in DIAS_SEMANA:
         num_sesiones = obtener_sesiones_por_dia(dia)
         print(f"   📅 {dia} ({num_sesiones} sesiones)...")
-
         for i in range(1, num_sesiones + 1):
-            # CADA VEZ QUE CAMBIAMOS SESION, SE CREA UN CSV NUEVO
             admin_logs.cambiar_sesion(dia, i)
-
             admin_logs.log(f"🔔 INICIO SESIÓN {i}", "SESION")
             yield env.timeout(DURACION_SESION)
             admin_logs.log(f"🔕 FIN SESIÓN {i}", "SESION")
@@ -348,51 +325,96 @@ def gestor_semanal(env, admin_logs):
         if restante > 0: yield env.timeout(restante)
 
 
+# --- FUNCIÓN DE REPORTES AVANZADA ---
 def generar_conclusiones_semanales(lista_visitas, carpeta_destino, mes, semana_relativa, semana_absoluta, socios_db):
-    ruta = f"{carpeta_destino}/Reporte_{mes}_Semana_{semana_relativa}.json"
+    ruta_json = f"{carpeta_destino}/Reporte_INTEGRAL_{mes}_S{semana_relativa}.json"
+    ruta_txt = f"{carpeta_destino}/Resumen_Ejecutivo_{mes}_S{semana_relativa}.txt"
 
-    ultima_satisfaccion_map = {}
-    satisfaccion_total = 0
-    resultados = []
+    print(f"📊 Generando reporte avanzado de la semana {semana_relativa}...")
 
-    for u in lista_visitas:
-        resultados.append({"id": u.id, "satisfaccion_final": u.satisfaccion})
-        satisfaccion_total += u.satisfaccion
-        ultima_satisfaccion_map[u.id] = {"satisfaccion": u.satisfaccion, "faltas": u.faltas_consecutivas}
+    # 1. ANÁLISIS DE AFLUENCIA
+    total_visitas = len(lista_visitas)
+    dias = [u.dia_sesion for u in lista_visitas]
+    conteo_dias = Counter(dias)
+    dia_pico = conteo_dias.most_common(1)[0] if conteo_dias else ("N/A", 0)
 
-    bajas = 0
-    lista_bajas = []
+    # 2. ANÁLISIS DE SATISFACCIÓN
+    satisfaccion_total = sum(u.satisfaccion for u in lista_visitas)
+    promedio_sat = satisfaccion_total / total_visitas if total_visitas > 0 else 0
+
+    sat_buckets = {
+        "Excelente (90-100)": len([u for u in lista_visitas if u.satisfaccion >= 90]),
+        "Buena (60-89)": len([u for u in lista_visitas if 60 <= u.satisfaccion < 90]),
+        "En Riesgo (20-59)": len([u for u in lista_visitas if 20 <= u.satisfaccion < 60]),
+        "Crítica (<20)": len([u for u in lista_visitas if u.satisfaccion < 20])
+    }
+
+    # 3. GESTIÓN DE BAJAS Y BD
+    bajas_esta_semana = 0
+    lista_bajas_detalle = []
+    usuarios_en_riesgo_detalle = []
+    castigos_semana = 0
+
+    mapa_visitas = {u.id: u.satisfaccion for u in lista_visitas}
 
     for socio in socios_db:
-        if socio["id"] in ultima_satisfaccion_map:
-            datos = ultima_satisfaccion_map[socio["id"]]
-            socio["satisfaccion_acumulada"] = datos["satisfaccion"]
-            socio["faltas_consecutivas"] = datos["faltas"]
+        if socio["id"] in mapa_visitas:
+            nueva_sat = mapa_visitas[socio["id"]]
+            socio["satisfaccion_acumulada"] = nueva_sat
+            socio["faltas_consecutivas"] = 0
 
-            if socio["faltas_consecutivas"] >= 3:
-                socio["faltas_consecutivas"] = 0
-                socio["castigado_hasta_semana_absoluta"] = semana_absoluta + 1
+        elif socio.get("activo", True):
+            socio["faltas_consecutivas"] = socio.get("faltas_consecutivas", 0) + 1
 
-            if socio["satisfaccion_acumulada"] < 20 and socio.get("activo", True):
-                socio["activo"] = False
-                socio["fecha_baja"] = f"{mes} - Semana {semana_relativa}"
-                bajas += 1
-                lista_bajas.append({"id": socio["id"], "nombre": socio["nombre"], "motivo": "Insatisfacción"})
-                print(f"      ❌ BAJA: {socio['nombre']}")
+        # Bloqueo por Faltas (3 semanas sin venir)
+        if socio.get("faltas_consecutivas", 0) >= 3 and socio.get("activo", True):
+            socio["faltas_consecutivas"] = 0
+            # Se bloquea por 2 semanas
+            socio["castigado_hasta_semana_absoluta"] = semana_absoluta + 2
+            castigos_semana += 1
 
-    promedio = satisfaccion_total / len(lista_visitas) if lista_visitas else 0
+        # Baja por Churn (< 20 puntos)
+        if socio["satisfaccion_acumulada"] < 20 and socio.get("activo", True):
+            socio["activo"] = False
+            socio["fecha_baja"] = f"{mes} - S{semana_relativa}"
+            bajas_esta_semana += 1
+            lista_bajas_detalle.append({
+                "id": socio["id"], "nombre": socio["nombre"],
+                "motivo": "Insatisfacción", "sat_final": socio["satisfaccion_acumulada"]
+            })
+            print(f"      ❌ BAJA: {socio['nombre']} (Sat: {socio['satisfaccion_acumulada']})")
 
-    informe = {
-        "periodo": f"{mes} - Semana {semana_relativa}",
-        "resumen": {"visitas": len(lista_visitas), "satisfaccion_media": round(promedio, 2), "bajas": bajas},
-        "bajas_detalle": lista_bajas
-    }
-    with open(ruta, "w", encoding="utf-8") as f:
-        json.dump(informe, f, indent=4, ensure_ascii=False)
+        elif 20 <= socio["satisfaccion_acumulada"] < 50 and socio.get("activo", True):
+            usuarios_en_riesgo_detalle.append(
+                {"id": socio["id"], "nombre": socio["nombre"], "sat": socio["satisfaccion_acumulada"]})
+
     with open("datos_clientes.json", "w", encoding="utf-8") as f:
         json.dump(socios_db, f, indent=4, ensure_ascii=False)
 
-    return bajas
+    informe_completo = {
+        "periodo": {"mes": mes, "semana": semana_relativa, "absoluta": semana_absoluta},
+        "kpis": {
+            "visitas": total_visitas, "sat_media": round(promedio_sat, 2),
+            "bajas": bajas_esta_semana, "castigos_ausencia": castigos_semana
+        },
+        "afluencia": {"dia_pico": dia_pico, "detalle_dias": dict(conteo_dias)},
+        "satisfaccion": sat_buckets,
+        "listados": {"bajas": lista_bajas_detalle, "riesgo": usuarios_en_riesgo_detalle}
+    }
+
+    with open(ruta_json, "w", encoding="utf-8") as f:
+        json.dump(informe_completo, f, indent=4, ensure_ascii=False)
+
+    # Resumen TXT
+    with open(ruta_txt, "w", encoding="utf-8") as f:
+        f.write(f"=== REPORTE: {mes.upper()} S{semana_relativa} ===\n")
+        f.write(f"Visitas: {total_visitas} | Sat Media: {promedio_sat:.1f}\n")
+        f.write(f"Bajas: {bajas_esta_semana} | Castigos: {castigos_semana}\n\n")
+        f.write("--- SATISFACCIÓN ---\n")
+        for k, v in sat_buckets.items(): f.write(f"{k}: {v}\n")
+        f.write(f"\nDia Pico: {dia_pico[0]} ({dia_pico[1]} pax)\n")
+
+    return bajas_esta_semana
 
 
 def main():
@@ -416,12 +438,11 @@ def main():
         altas = config_mes.get("nuevas_altas_aprox", 0)
 
         print(f"\n📅 === INICIANDO {mes.upper()} ({semanas_mes} semanas) ===")
-
         carpeta_mes = f"{carpeta_raiz}/{mes}"
         if not os.path.exists(carpeta_mes): os.makedirs(carpeta_mes)
 
         if not abierto:
-            print(f"   🎄 {mes}: Cerrado por vacaciones.")
+            print(f"   🎄 {mes}: Cerrado.")
             continue
 
         if altas > 0:
@@ -430,13 +451,10 @@ def main():
         for semana in range(1, semanas_mes + 1):
             semana_absoluta += 1
             print(f"   ► Semana {semana}")
-
             carpeta_semana = f"{carpeta_mes}/Semana_{semana}"
             if not os.path.exists(carpeta_semana): os.makedirs(carpeta_semana)
 
             env = simpy.Environment()
-
-            # Instanciamos el administrador para esta semana
             admin_logs = AdministradorDeLogs(carpeta_semana=carpeta_semana)
             admin_logs.iniciar_log_general()
 
@@ -458,7 +476,6 @@ def main():
                 env.run(until=TIEMPO_SEMANAL_SIMULACION)
 
                 mi_gimnasio.cerrar_gimnasio()
-
                 bajas = generar_conclusiones_semanales(visitas, carpeta_semana, mes, semana, semana_absoluta, socios_db)
                 total_bajas_anuales += bajas
 
@@ -466,9 +483,7 @@ def main():
                 print(f"❌ Error crítico: {e}")
                 raise e
 
-    print(f"\n🎓 AÑO ACADÉMICO FINALIZADO.")
-    print(f"📉 Total Bajas: {total_bajas_anuales}")
-    print(f"📂 Resultados en '{carpeta_raiz}'")
+    print(f"\n🎓 AÑO ACADÉMICO FINALIZADO. Bajas totales: {total_bajas_anuales}")
 
 
 if __name__ == "__main__":
