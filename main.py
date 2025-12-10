@@ -363,7 +363,8 @@ def main():
 
             admin_logs.log(f"Visitas programadas: {len(lista_visitas)}", "SETUP")
 
-            env.process(controlador_de_llegadas(env, lista_visitas, admin_logs))
+            env.process(controlador_de_llegadas(
+                env, lista_visitas, admin_logs))
             env.process(gestor_semanal(env, admin_logs))
 
             env.run(until=TIEMPO_TOTAL_SIMULACION)
@@ -379,6 +380,8 @@ def main():
 
     print(f"\n✅ MES COMPLETADO. Total bajas: {total_bajas_acumuladas}")
     print(f"📂 Revisa la carpeta 'logs_mensuales' para ver los detalles.")
+
+
 
 
 if __name__ == "__main__":
