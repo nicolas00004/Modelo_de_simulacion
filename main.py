@@ -9,17 +9,44 @@ from Gimnasio import Gimnasio
 from usuario import Usuario
 
 
-# --- 1. CLASE LOGS ---
+# --- 1. CLASE LOGS (MEJORADA PARA CSV ROBUSTO) ---
 class Logs:
     def __init__(self, ruta_completa_sin_ext):
+        """
+        Genera .log y .csv.
+        Define columnas fijas para evitar errores de escritura en el CSV.
+        """
         carpeta = os.path.dirname(ruta_completa_sin_ext)
         if not os.path.exists(carpeta):
             os.makedirs(carpeta)
+
         self.archivo_log = f"{ruta_completa_sin_ext}.log"
         self.archivo_csv = f"{ruta_completa_sin_ext}.csv"
+
+        # Inicializar LOG de texto
         with open(self.archivo_log, "w", encoding="utf-8") as f:
-            f.write(f"--- Log iniciado: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n")
-        self.cabeceras_escritas = False
+            f.write(f"--- Sesión iniciada: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n")
+
+        # Inicializar CSV con columnas estándar
+        # Definimos TODAS las posibles columnas que usaremos
+        self.fieldnames = [
+            "tiempo_simulacion",
+            "tipo_evento",
+            "id_usuario",
+            "nombre",
+            "dia",
+            "sesion",
+            "satisfaccion_actual",
+            "maquina",  # Para eventos de uso
+            "duracion",  # Para tiempo uso/espera
+            "cola_tamano",  # Para eventos de cola
+            "extra_info"  # Para cualquier otro dato
+        ]
+
+        # Creamos el archivo y escribimos cabeceras
+        with open(self.archivo_csv, mode='w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=self.fieldnames)
+            writer.writeheader()
 
     def _obtener_tiempo(self):
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -36,15 +63,19 @@ class Logs:
         self.log("---------------------", "SETUP")
 
     def registrar_datos(self, datos: dict):
+        """
+        Guarda una fila en el CSV. Filtra las claves que no están en fieldnames
+        para evitar errores, y rellena las vacías.
+        """
         try:
+            # Filtramos solo los datos que coinciden con nuestras columnas definidas
+            datos_filtrados = {k: v for k, v in datos.items() if k in self.fieldnames}
+
             with open(self.archivo_csv, mode='a', newline='', encoding='utf-8') as f:
-                writer = csv.DictWriter(f, fieldnames=datos.keys())
-                if not self.cabeceras_escritas:
-                    writer.writeheader()
-                    self.cabeceras_escritas = True
-                writer.writerow(datos)
+                writer = csv.DictWriter(f, fieldnames=self.fieldnames)
+                writer.writerow(datos_filtrados)
         except Exception as e:
-            self.log(f"Error CSV: {e}", "ERROR")
+            self.log(f"Error escribiendo CSV: {e}", "ERROR")
 
 
 # --- 2. ADMINISTRADOR DE LOGS ---
@@ -54,11 +85,12 @@ class AdministradorDeLogs:
         self.carpeta_semana = carpeta_semana
 
     def cambiar_sesion(self, nombre_dia, numero_sesion):
+        # Estructura: Semana / Dia / Sesion_X
         ruta_base = f"{self.carpeta_semana}/{nombre_dia}/Sesion_{numero_sesion}"
         self.logger_actual = Logs(ruta_base)
 
     def iniciar_log_general(self):
-        ruta_base = f"{self.carpeta_semana}/Log_General_Semana"
+        ruta_base = f"{self.carpeta_semana}/Log_Resumen_Semana"
         self.logger_actual = Logs(ruta_base)
 
     def log(self, mensaje, nivel="INFO"):
@@ -94,19 +126,18 @@ class PerfilGenerado:
     def tiempo_uso_accesorio(self): return random.randint(5, 15)
 
 
-# --- CONFIGURACIÓN ANUAL AVANZADA ---
-# "nuevas_altas_aprox": Cantidad de gente que se apunta ESE mes (se suma a los anteriores)
+# --- CONFIGURACIÓN ANUAL ---
 CALENDARIO_ACADEMICO = [
     {"mes": "Septiembre", "semanas": 4, "peso_afluencia": 1.2, "nuevas_altas_aprox": 50, "abierto": True},
     {"mes": "Octubre", "semanas": 4, "peso_afluencia": 1.0, "nuevas_altas_aprox": 20, "abierto": True},
     {"mes": "Noviembre", "semanas": 4, "peso_afluencia": 0.9, "nuevas_altas_aprox": 15, "abierto": True},
     {"mes": "Diciembre", "semanas": 3, "peso_afluencia": 0.5, "nuevas_altas_aprox": 5, "abierto": True},
     {"mes": "Navidad", "semanas": 0, "peso_afluencia": 0.0, "nuevas_altas_aprox": 0, "abierto": False},
-    {"mes": "Enero", "semanas": 4, "peso_afluencia": 1.5, "nuevas_altas_aprox": 100, "abierto": True},  # Boom Año Nuevo
+    {"mes": "Enero", "semanas": 4, "peso_afluencia": 1.5, "nuevas_altas_aprox": 100, "abierto": True},
     {"mes": "Febrero", "semanas": 4, "peso_afluencia": 1.3, "nuevas_altas_aprox": 40, "abierto": True},
     {"mes": "Marzo", "semanas": 4, "peso_afluencia": 1.1, "nuevas_altas_aprox": 20, "abierto": True},
     {"mes": "Abril", "semanas": 4, "peso_afluencia": 0.9, "nuevas_altas_aprox": 10, "abierto": True},
-    {"mes": "Mayo", "semanas": 4, "peso_afluencia": 1.3, "nuevas_altas_aprox": 30, "abierto": True},  # Operación Bikini
+    {"mes": "Mayo", "semanas": 4, "peso_afluencia": 1.3, "nuevas_altas_aprox": 30, "abierto": True},
     {"mes": "Junio", "semanas": 3, "peso_afluencia": 0.8, "nuevas_altas_aprox": 5, "abierto": True}
 ]
 
@@ -162,7 +193,6 @@ def generar_rutina_inteligente(genero):
     return rutina
 
 
-# --- FUNCIÓN GENERADORA DE LOTES (REUTILIZABLE) ---
 def generar_lote_socios(cantidad, id_inicial, mes_origen):
     lote = []
     for i in range(cantidad):
@@ -176,7 +206,6 @@ def generar_lote_socios(cantidad, id_inicial, mes_origen):
         perfil = {"tipo": "Fuerza" if random.random() < 0.7 else "Mixto", "energia": random.randint(100, 500),
                   "prob_descanso": random.uniform(0.1, 0.3)}
 
-        # Solo en la carga inicial hay bajas históricas
         es_baja_historica = False
         if mes_origen == "Carga_Inicial":
             es_baja_historica = random.random() < 0.10
@@ -212,23 +241,14 @@ def inicializar_base_datos(archivo="datos_clientes.json", cantidad_inicial=300):
 
 
 def inyectar_socios_nuevos(socios_actuales, cantidad_objetivo, mes_actual):
-    """
-    Genera un número variable de socios (cantidad_objetivo +/- 20%) y los añade.
-    """
     if cantidad_objetivo <= 0: return socios_actuales
-
-    # Variabilidad aleatoria para que no sea fijo
     cantidad_real = int(random.uniform(0.8, 1.2) * cantidad_objetivo)
     ultimo_id = socios_actuales[-1]["id"]
-
     print(f"✨ ALTAS {mes_actual.upper()}: Registrando {cantidad_real} usuarios nuevos...")
-
     nuevos_socios = generar_lote_socios(cantidad_real, id_inicial=ultimo_id + 1, mes_origen=mes_actual)
     socios_actuales.extend(nuevos_socios)
-
     with open("datos_clientes.json", "w", encoding="utf-8") as f:
         json.dump(socios_actuales, f, indent=4, ensure_ascii=False)
-
     return socios_actuales
 
 
@@ -257,7 +277,6 @@ def generar_flota_semanal_reutilizando(env, gimnasio, base_datos_socios, semana_
 
             muestra = min(num_asistentes, len(candidatos))
             asistentes_hoy = random.sample(candidatos, muestra)
-
             inicio_sesion_global = (dia_idx * MINUTOS_MAXIMOS_POR_DIA) + (sesion * DURACION_SESION)
 
             for datos_socio in asistentes_hoy:
@@ -290,24 +309,23 @@ def controlador_de_llegadas(env, lista_usuarios, admin_logs):
         nombre_dia = DIAS_SEMANA[dia_actual_idx]
         minuto_del_dia = env.now % MINUTOS_MAXIMOS_POR_DIA
         sesion_del_dia = int(minuto_del_dia // DURACION_SESION)
-        fin_sesion_global = (dia_actual_idx * MINUTOS_MAXIMOS_POR_DIA) + ((sesion_del_dia + 1) * DURACION_SESION)
-        tiempo_restante = fin_sesion_global - env.now
-
-        duracion_deseada = usuario.hora_fin - usuario.tiempo_llegada
-        if duracion_deseada <= 0: duracion_deseada = 60
-        duracion_real = min(duracion_deseada, tiempo_restante)
-
-        if duracion_real < 5: continue
 
         usuario.logger_sesion = admin_logs
         usuario.dia_sesion = nombre_dia
         usuario.numero_sesion = sesion_del_dia + 1
 
-        admin_logs.log(f"➕ {usuario.nombre} entra (Alta: {usuario.tipo_usuario})", "LLEGADA")
+        admin_logs.log(f"➕ {usuario.nombre} entra", "LLEGADA")
+
+        # --- AQUÍ REGISTRAMOS LA LLEGADA EN EL CSV DE LA SESIÓN ---
         admin_logs.registrar_datos({
-            "tiempo_simulacion": f"{env.now:.2f}", "tipo_evento": "LLEGADA",
-            "id_usuario": usuario.id, "nombre": usuario.nombre, "dia": nombre_dia,
-            "sesion": sesion_del_dia + 1, "satisfaccion_inicio": usuario.satisfaccion
+            "tiempo_simulacion": f"{env.now:.2f}",
+            "tipo_evento": "LLEGADA",
+            "id_usuario": usuario.id,
+            "nombre": usuario.nombre,
+            "dia": nombre_dia,
+            "sesion": sesion_del_dia + 1,
+            "satisfaccion_actual": usuario.satisfaccion,
+            "extra_info": "Inicio Rutina"
         })
 
         usuario.process = env.process(usuario.entrenar(tiempo_total=90))
@@ -316,9 +334,13 @@ def controlador_de_llegadas(env, lista_usuarios, admin_logs):
 def gestor_semanal(env, admin_logs):
     for dia in DIAS_SEMANA:
         num_sesiones = obtener_sesiones_por_dia(dia)
+        print(f"   📅 {dia} ({num_sesiones} sesiones)...")
+
         for i in range(1, num_sesiones + 1):
+            # CADA VEZ QUE CAMBIAMOS SESION, SE CREA UN CSV NUEVO
             admin_logs.cambiar_sesion(dia, i)
-            admin_logs.log(f"🔔 INICIO SESIÓN {i} - {dia}", "SESION")
+
+            admin_logs.log(f"🔔 INICIO SESIÓN {i}", "SESION")
             yield env.timeout(DURACION_SESION)
             admin_logs.log(f"🔕 FIN SESIÓN {i}", "SESION")
 
@@ -328,6 +350,7 @@ def gestor_semanal(env, admin_logs):
 
 def generar_conclusiones_semanales(lista_visitas, carpeta_destino, mes, semana_relativa, semana_absoluta, socios_db):
     ruta = f"{carpeta_destino}/Reporte_{mes}_Semana_{semana_relativa}.json"
+
     ultima_satisfaccion_map = {}
     satisfaccion_total = 0
     resultados = []
@@ -379,7 +402,7 @@ def main():
     if os.path.exists(carpeta_raiz): shutil.rmtree(carpeta_raiz)
     os.makedirs(carpeta_raiz)
 
-    # 1. INICIALIZAMOS LA BASE DE DATOS INICIAL (300 personas)
+    if os.path.exists("datos_clientes.json"): os.remove("datos_clientes.json")
     socios_db = inicializar_base_datos("datos_clientes.json", cantidad_inicial=300)
 
     semana_absoluta = 0
@@ -390,7 +413,7 @@ def main():
         semanas_mes = config_mes["semanas"]
         peso = config_mes["peso_afluencia"]
         abierto = config_mes["abierto"]
-        altas_objetivo = config_mes.get("nuevas_altas_aprox", 0)
+        altas = config_mes.get("nuevas_altas_aprox", 0)
 
         print(f"\n📅 === INICIANDO {mes.upper()} ({semanas_mes} semanas) ===")
 
@@ -401,10 +424,8 @@ def main():
             print(f"   🎄 {mes}: Cerrado por vacaciones.")
             continue
 
-        # --- AQUI SE GESTIONAN LAS ALTAS MENSUALES ---
-        # Si hay altas definidas en el calendario, se inyectan antes de empezar el mes
-        if altas_objetivo > 0:
-            socios_db = inyectar_socios_nuevos(socios_db, altas_objetivo, mes)
+        if altas > 0:
+            socios_db = inyectar_socios_nuevos(socios_db, altas, mes)
 
         for semana in range(1, semanas_mes + 1):
             semana_absoluta += 1
@@ -414,9 +435,10 @@ def main():
             if not os.path.exists(carpeta_semana): os.makedirs(carpeta_semana)
 
             env = simpy.Environment()
+
+            # Instanciamos el administrador para esta semana
             admin_logs = AdministradorDeLogs(carpeta_semana=carpeta_semana)
             admin_logs.iniciar_log_general()
-            admin_logs.log(f"Iniciando Semana {semana} ({mes})", "INIT")
 
             try:
                 mi_gimnasio = Gimnasio()
@@ -446,7 +468,6 @@ def main():
 
     print(f"\n🎓 AÑO ACADÉMICO FINALIZADO.")
     print(f"📉 Total Bajas: {total_bajas_anuales}")
-    print(f"👥 Socios finales en DB: {len(socios_db)}")
     print(f"📂 Resultados en '{carpeta_raiz}'")
 
 
