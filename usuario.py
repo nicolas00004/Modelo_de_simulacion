@@ -288,7 +288,7 @@ class Usuario:
         cola_mejor = len(mejor_maquina.cola)
 
         # 4. Filtro de paciencia: Si la cola es inmensa, el usuario desiste
-        # El atributo .paciencia_maxima viene del perfil (clase PerfilGenerado o JSON)
+        # El atributo paciencia_maxima viene del perfil (clase PerfilGenerado o JSON)
         if cola_mejor > self.perfil.paciencia_maxima:
             print(f"[{self.env.now:6.2f}] 😤 {self.nombre}: Demasiada cola en {mejor_maquina.nombre}. Paso.")
 
