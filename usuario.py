@@ -4,6 +4,7 @@ from Problema import Problema
 import json
 
 
+
 class Usuario:
     def __init__(self, env: simpy.Environment, gimnasio,
                  id_usuario: int, nombre: str, tipo_usuario: str, tiempo_llegada: float,

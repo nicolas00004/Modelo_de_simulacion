@@ -12,12 +12,16 @@ class Perfil:
         self.paciencia_maxima = 2  # Cuántas personas en cola soporta antes de irse
 
     def decidir_descanso(self):
-        """Devuelve True si el usuario decide descansar en este turno."""
+        """Devuelve Tru
+        e si el usuario decide descansar en este turno."""
         return random.random() < self.prob_descanso
 
     def decidir_preguntar_monitor(self):
         """Devuelve True si el usuario quiere buscar un monitor (ej: 5% de prob)."""
         return random.random() < 0.05
+
+
+
 
     def tiempo_preparacion(self):
         """Tiempo en el vestuario al llegar."""

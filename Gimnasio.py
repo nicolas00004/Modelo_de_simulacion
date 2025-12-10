@@ -5,6 +5,7 @@ from Maquina import Maquina
 from Monitor import Monitor
 
 
+
 # from Usuario import Usuario  # Descomentar si tienes la clase Usuario
 
 class Gimnasio:

@@ -58,6 +58,7 @@ class Logs:
         """
         ESTA ES LA FUNCIÓN CLAVE PARA ESTADÍSTICA.
         Recibe un diccionario y lo guarda como una fila en el CSV.
+
         Ej: datos = {"iteracion": 1, "fitness_promedio": 10.5, "mejor_fitness": 50}
         """
         try:
