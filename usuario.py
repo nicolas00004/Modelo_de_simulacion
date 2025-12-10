@@ -315,3 +315,5 @@ class Usuario:
         except Exception as e:
             print(f"❌ Error cargando usuarios: {e}")
             return []
+
+
