@@ -104,4 +104,4 @@ if __name__ == "__main__":
             generar_dashboard(datos)
         except Exception as e:
             print(f"❌ Error generando gráficos: {e}")
-            print("💡 Consejo: Borra la carpeta logs_anuales y ejecuta main.py de nuevo para regenerar datos limpios.")
+            print("💡 Borra la carpeta logs_anuales y ejecuta main.py de nuevo para regenerar datos limpios.")
