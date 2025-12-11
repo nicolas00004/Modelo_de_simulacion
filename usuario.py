@@ -1,4 +1,5 @@
 import simpy
+import random
 from Perfil import Perfil
 from Problema import Problema
 import json
@@ -67,85 +68,98 @@ class Usuario:
 
     def entrenar(self, tiempo_total: float):
         PARAMS = self.config["satisfaccion"]
-
-        # Obtenemos valores del config o usamos defaults muy bajos si no existen
         pen_salida = PARAMS.get("penalizacion_salida_forzada", 2)
         pen_rota = PARAMS.get("penalizacion_maquina_rota", 5)
 
-        self._notificar(f"entra al gimnasio (Meta: {tiempo_total}m)", "🚪", "INICIO",
-                        {"duracion": tiempo_total, "satisfaccion_inicio": self.satisfaccion})
+        # --- BLOQUE TRY PARA CAPTURAR LA EXPULSIÓN DE SESIÓN ---
+        try:
+            self._notificar(f"entra al gimnasio (Meta: {tiempo_total}m)", "🚪", "INICIO",
+                            {"duracion": tiempo_total, "satisfaccion_inicio": self.satisfaccion})
 
-        yield from self._preparacion()
+            yield from self._preparacion()
 
-        for paso in self.rutina:
-            # 1. TIEMPO AGOTADO (Penalización baja)
-            if self.hora_fin > 0 and self.env.now >= self.hora_fin:
-                self._actualizar_satisfaccion(-pen_salida)
-                self._notificar("se va por tiempo (molestia leve).", "⌛", "SALIDA_FORZADA")
-                break
+            for paso in self.rutina:
+                # 1. TIEMPO INDIVIDUAL AGOTADO
+                if self.hora_fin > 0 and self.env.now >= self.hora_fin:
+                    self._actualizar_satisfaccion(-pen_salida)
+                    self._notificar("se va por tiempo personal.", "⌛", "SALIDA_FORZADA")
+                    return  # Salimos de la función
 
-            tipo_maquina = paso['tipo_maquina_deseada']
-            duracion_ejercicio = paso['tiempo_uso']
+                tipo_maquina = paso['tipo_maquina_deseada']
+                duracion_ejercicio = paso['tiempo_uso']
 
-            if self.perfil.decidir_descanso(): yield from self._descanso()
-            if self.perfil.decidir_preguntar_monitor(): yield from self._preguntarAMonitor()
+                if self.perfil.decidir_descanso(): yield from self._descanso()
+                if self.perfil.decidir_preguntar_monitor(): yield from self._preguntarAMonitor()
 
-            maquina = self._buscarMaquinaPorTipo(tipo_maquina)
-            if maquina is None: continue
+                maquina = self._buscarMaquinaPorTipo(tipo_maquina)
+                if maquina is None: continue
 
-            # 2. GESTIÓN DE COLA (AQUÍ ES DONDE DUELE)
-            cola_actual = len(maquina.cola)
-            if cola_actual > 0:
-                self._notificar(f"hace cola en {maquina.nombre} ({cola_actual} pax)", "🧘", "ESPERA_COLA",
-                                {"maquina": maquina.nombre, "cola_tamano": cola_actual})
+                # Gestión de Cola
+                cola_actual = len(maquina.cola)
+                if cola_actual > 0:
+                    self._notificar(f"hace cola en {maquina.nombre} ({cola_actual} pax)", "🧘", "ESPERA_COLA",
+                                    {"maquina": maquina.nombre, "cola_tamano": cola_actual})
+                else:
+                    self._notificar(f"va directo a {maquina.nombre}", "🏃", "ESPERA_COLA",
+                                    {"maquina": maquina.nombre, "cola_tamano": 0})
+
+                try:
+                    with maquina.resource.request() as peticion:
+                        t_inicio = self.env.now
+                        yield peticion  # Aquí se bloquea esperando (o es interrumpido)
+
+                        t_espera = self.env.now - t_inicio
+
+                        # Lógica de paciencia
+                        limite = PARAMS.get("minutos_paciencia_cola", 2)
+                        tasa = PARAMS.get("penalizacion_espera_cola", 2.0)
+
+                        if t_espera > limite:
+                            penalizacion = int((t_espera - limite) * tasa)
+                            if penalizacion > 0:
+                                self._actualizar_satisfaccion(-penalizacion)
+                                print(f"      😡 {self.nombre} odia esperar: {t_espera:.1f}m (Sat -{penalizacion})")
+
+                        # Chequeo post-cola
+                        if (self.hora_fin > 0) and (self.env.now + duracion_ejercicio > self.hora_fin):
+                            self._actualizar_satisfaccion(-pen_salida)
+                            self._notificar(f"deja {maquina.nombre} sin usar (no time)", "🏃💨", "ABANDONO_MAQUINA")
+                            break
+
+                        self._notificar(f"empieza en {maquina.nombre} ({duracion_ejercicio}m)", "💪", "USO_MAQUINA",
+                                        {"maquina": maquina.nombre, "duracion": duracion_ejercicio})
+
+                        try:
+                            # Aquí se bloquea haciendo ejercicio (o es interrumpido)
+                            yield from maquina.hacer(self, duracion_ejercicio)
+                            self._log_evento(f"Libera {maquina.nombre}", "FIN_MAQUINA", {"maquina": maquina.nombre})
+
+                        except Exception as e:
+                            # Si es interrupción de SimPy, la relanzamos para que la capture el bloque externo
+                            if isinstance(e, simpy.Interrupt): raise e
+
+                            # Si es rotura de máquina
+                            self._actualizar_satisfaccion(-pen_rota)
+                            self._notificar(f"¡{maquina.nombre} SE ROMPIÓ!", "💥", "MAQUINA_ROTA")
+                            continue
+
+                except simpy.Interrupt as i:
+                    # Capturamos interrupción MIENTRAS esperamos cola o usamos máquina
+                    raise i  # Relanzamos para salir del bucle for
+
+            self._notificar("termina rutina y se va.", "👋", "SALIDA")
+
+        except simpy.Interrupt as i:
+            # --- AQUÍ SE GESTIONA LA SALIDA FORZADA POR CIERRE DE SESIÓN ---
+            if i.cause == "FIN_SESION":
+                self._actualizar_satisfaccion(-5)  # Pequeña molestia por echarle
+                self._notificar("¡FIN DE SESIÓN! Es expulsado del gimnasio.", "🚨", "SALIDA_CIERRE")
             else:
-                self._notificar(f"va directo a {maquina.nombre}", "🏃", "ESPERA_COLA",
-                                {"maquina": maquina.nombre, "cola_tamano": 0})
-
-            try:
-                with maquina.resource.request() as peticion:
-                    t_inicio = self.env.now
-                    yield peticion
-
-                    t_espera = self.env.now - t_inicio
-
-                    # --- LÓGICA AGRESIVA DE COLA ---
-                    limite = PARAMS.get("minutos_paciencia_cola", 2)  # Poca paciencia
-                    tasa = PARAMS.get("penalizacion_espera_cola", 2.0)  # Mucho castigo
-
-                    if t_espera > limite:
-                        penalizacion = int((t_espera - limite) * tasa)
-                        if penalizacion > 0:
-                            self._actualizar_satisfaccion(-penalizacion)
-                            print(f"      😡 {self.nombre} odia esperar: {t_espera:.1f}m (Sat -{penalizacion})")
-
-                    # Chequeo post-cola
-                    if (self.hora_fin > 0) and (self.env.now + duracion_ejercicio > self.hora_fin):
-                        self._actualizar_satisfaccion(-pen_salida)
-                        self._notificar(f"deja {maquina.nombre} sin usar (no time)", "🏃💨", "ABANDONO_MAQUINA")
-                        break
-
-                    self._notificar(f"empieza en {maquina.nombre} ({duracion_ejercicio}m)", "💪", "USO_MAQUINA",
-                                    {"maquina": maquina.nombre, "duracion": duracion_ejercicio})
-
-                    try:
-                        yield from maquina.hacer(self, duracion_ejercicio)
-                        self._log_evento(f"Libera {maquina.nombre}", "FIN_MAQUINA", {"maquina": maquina.nombre})
-
-                    except Exception:
-                        # 3. MÁQUINA ROTA (Penalización suavizada)
-                        self._actualizar_satisfaccion(-pen_rota)
-                        self._notificar(f"¡{maquina.nombre} SE ROMPIÓ! (Molestia media)", "💥", "MAQUINA_ROTA")
-                        continue
-
-            except Exception as e:
-                print(f"Error inesperado: {e}")
-
-        self._notificar("termina rutina y se va.", "👋", "SALIDA")
+                print(f"Interrupción desconocida para {self.nombre}: {i.cause}")
 
     def _buscarMaquinaPorTipo(self, tipo_deseado: str):
         PARAMS = self.config["satisfaccion"]
-        pen_sin_maq = PARAMS.get("penalizacion_sin_maquina", 1)  # Penalización muy baja
+        pen_sin_maq = PARAMS.get("penalizacion_sin_maquina", 1)
 
         todas = [m for m in self.gimnasio.maquinas if m.tipo_maquina == tipo_deseado]
 
@@ -164,7 +178,6 @@ class Usuario:
         cola_mejor = len(mejor_maquina.cola)
 
         if cola_mejor > self.perfil.paciencia_maxima:
-            # Irse por cola llena ahora penaliza poco, lo que duele es quedarse y esperar
             self._actualizar_satisfaccion(-pen_sin_maq)
             self._notificar(f"ve mucha cola ({cola_mejor}) en {mejor_maquina.nombre} y pasa.", "😤", "ABANDONO_POR_COLA")
             return None
@@ -175,14 +188,11 @@ class Usuario:
         yield self.env.timeout(self.perfil.tiempo_preparacion())
 
     def _descanso(self):
-        # Descansar no penaliza, es parte del proceso
         self._notificar(f"descansa un poco...", "🥤", "DESCANSO")
         yield self.env.timeout(self.perfil.tiempo_descanso())
 
     def _preguntarAMonitor(self):
         if not self.gimnasio.monitores: return
         monitor = min(self.gimnasio.monitores, key=lambda m: len(m.cola))
-
-        # Preguntar al monitor no penaliza (son útiles)
         self._notificar(f"pregunta a {monitor.nombre}...", "🗣️", "CONSULTA_MONITOR")
         yield from monitor.preguntar(self)

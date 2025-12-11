@@ -1,6 +1,7 @@
 import os
 import csv
 import json
+import random  # Necesario para la probabilidad de segunda oportunidad
 from datetime import datetime
 from collections import Counter
 
@@ -45,8 +46,9 @@ class AdministradorDeLogs:
         self.contador_asistentes = 0
 
     def cambiar_sesion(self, nombre_dia, numero_sesion):
-        ruta_base = f"{self.carpeta_semana}/{nombre_dia}/Sesion_{numero_sesion}"
-        self.logger_actual = Logs(ruta_base)
+        # MODO LIMPIO (Si quieres logs detallados descomenta la linea de abajo)
+        # self.logger_actual = Logs(f"{self.carpeta_semana}/{nombre_dia}/Sesion_{numero_sesion}")
+        self.logger_actual = None
         self.contador_asistentes = 0
 
     def registrar_entrada_usuario(self):
@@ -75,37 +77,34 @@ class GeneradorReportes:
         bajas = 0
         lista_bajas = []
         castigados_nuevos = 0
+        perdonados = 0
 
         idx_mes_actual = config.INDICE_MESES.get(mes, 0)
         SAT_CONFIG = config.datos["satisfaccion"]
+        prob_perdon = config.datos["simulacion"].get("probabilidad_reconsiderar_baja", 0.0)
 
-        # CONTEO DE NO-SHOWS (Faltas acumuladas esta semana)
         conteo_no_shows = Counter(ids_no_shows)
 
         for socio in socios_db:
             sid = socio["id"]
 
-            # 1. ACTUALIZAR SATISFACCIÓN (Si vino)
+            # 1. ACTUALIZAR SATISFACCIÓN
             if sid in ultima_satisfaccion_map:
                 socio["satisfaccion_acumulada"] = ultima_satisfaccion_map[sid]
-                # Si viene, le perdonamos las faltas anteriores (Sistema de premio)
                 socio["faltas_consecutivas"] = 0
 
-            # 2. GESTIONAR FALTAS (Si no vino y reservó)
+            # 2. GESTIONAR FALTAS
             faltas_esta_semana = conteo_no_shows.get(sid, 0)
             if faltas_esta_semana > 0:
                 socio["faltas_consecutivas"] += faltas_esta_semana
-                # print(f"   ⚠️ {socio['nombre']} faltó {faltas_esta_semana} veces. Total seguidas: {socio['faltas_consecutivas']}")
 
-            # 3. APLICAR CASTIGO (3 faltas = Bloqueo 2 semanas)
-            # Solo aplicamos castigo si no está ya castigado para evitar solapamientos raros
+            # 3. APLICAR CASTIGO
             if socio["faltas_consecutivas"] >= 3 and socio.get("castigado_hasta_semana_absoluta", 0) <= semana_absoluta:
                 socio["faltas_consecutivas"] = 0
                 socio["castigado_hasta_semana_absoluta"] = semana_absoluta + 2
                 castigados_nuevos += 1
-                # print(f"   🚫 CASTIGADO: {socio['nombre']} hasta semana {semana_absoluta + 2}")
 
-            # 4. GESTIÓN DE BAJAS (Por satisfacción)
+            # 4. GESTIÓN DE BAJAS Y SEGUNDA OPORTUNIDAD
             if socio.get("activo", True):
                 mes_alta = socio.get("mes_alta", "Carga_Inicial")
                 idx_alta = config.INDICE_MESES.get(mes_alta, -1)
@@ -119,10 +118,22 @@ class GeneradorReportes:
                     umbral = SAT_CONFIG["umbral_baja_veterano"]
 
                 if socio["satisfaccion_acumulada"] < umbral:
-                    socio["activo"] = False
-                    socio["fecha_baja"] = f"{mes} - S{semana_relativa}"
-                    bajas += 1
-                    lista_bajas.append({"id": sid, "motivo": f"Sat < {umbral}"})
+                    # --- AQUÍ ESTÁ EL CAMBIO: Segunda Oportunidad ---
+                    if random.random() < prob_perdon:
+                        # SE SALVA
+                        perdonados += 1
+                        socio[
+                            "satisfaccion_acumulada"] = 55  # Le subimos un poco el ánimo para que no caiga la semana que viene
+                        print(
+                            f"      😅 {socio['nombre']} pensó en irse (Sat {socio['satisfaccion_acumulada']}), pero le dará otra oportunidad.")
+                    else:
+                        # SE VA DEFINITIVAMENTE
+                        socio["activo"] = False
+                        socio["fecha_baja"] = f"{mes} - S{semana_relativa}"
+                        bajas += 1
+                        lista_bajas.append({"id": sid, "motivo": f"Sat < {umbral}"})
+                        print(
+                            f"      ❌ BAJA: {socio['nombre']} (Sat: {socio['satisfaccion_acumulada']}) - Antigüedad: {antiguedad} m")
 
         with open(config.datos["rutas"]["archivo_clientes"], "w", encoding="utf-8") as f:
             json.dump(socios_db, f, indent=4, ensure_ascii=False)
@@ -133,16 +144,24 @@ class GeneradorReportes:
 
         informe = {
             "periodo": f"{mes} - S{semana_relativa}",
-            "kpis": {"visitas": len(lista_visitas), "sat_media": round(promedio, 2), "bajas": bajas,
-                     "socios_activos": socios_activos, "nuevas_altas": nuevas_altas,
-                     "nuevos_castigados": castigados_nuevos},
+            "kpis": {
+                "visitas": len(lista_visitas),
+                "sat_media": round(promedio, 2),
+                "bajas": bajas,
+                "perdonados_segunda_oportunidad": perdonados,
+                "socios_activos": socios_activos,
+                "nuevas_altas": nuevas_altas,
+                "nuevos_castigados": castigados_nuevos
+            },
             "bajas_detalle": lista_bajas
         }
         with open(ruta_json, "w", encoding="utf-8") as f:
             json.dump(informe, f, indent=4)
+
         with open(ruta_txt, "w", encoding="utf-8") as f:
-            f.write(
-                f"=== {mes.upper()} S{semana_relativa} ===\nVisitas: {len(lista_visitas)}\nBajas: {bajas}\nCastigados: {castigados_nuevos}\n")
+            f.write(f"=== {mes.upper()} S{semana_relativa} ===\n")
+            f.write(f"Visitas: {len(lista_visitas)}\nSat Media: {promedio:.2f}\n")
+            f.write(f"Bajas: {bajas}\nSalvados in extremis: {perdonados}\n")
 
         return {"mes": mes, "visitas": len(lista_visitas), "bajas": bajas, "altas": nuevas_altas,
                 "satisfaccion": promedio, "socios_activos": socios_activos}

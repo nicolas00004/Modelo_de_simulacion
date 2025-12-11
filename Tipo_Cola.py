@@ -30,17 +30,9 @@ class GestorCola:
         prioridad_calc = 0
 
         if self.tipo_cola == "PRIORIDAD":
-            # Asumimos que el usuario tiene un atributo 'nivel_prioridad'
-            # (1 = VIP Máximo, 100 = Normal)
             prioridad_calc = getattr(usuario, 'nivel_prioridad', 100)
 
         elif self.tipo_cola == "LIFO":
-            # LIFO: El último en llegar entra primero.
-            # SimPy ordena menor número = mayor prioridad.
-            # Usamos -env.now. Ejemplo:
-            # Cliente A llega en t=10. Prio = -10
-            # Cliente B llega en t=20. Prio = -20
-            # -20 es menor que -10, así que B pasa antes que A.
             prioridad_calc = -self.env.now
 
         elif self.tipo_cola == "SJF":

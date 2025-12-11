@@ -2,18 +2,22 @@
   "simulacion": {
     "duracion_sesion_minutos": 90,
     "clientes_base_por_sesion": 50,
-    "usuarios_totales_iniciales": 400,
+    "usuarios_totales_iniciales": 300,
     "probabilidad_baja_historica": 0.15,
-    "variacion_afluencia": 0.2
+    "variacion_afluencia": 0.2,
+    "probabilidad_reconsiderar_baja": 0.4
   },
   "satisfaccion": {
     "umbral_baja_novato": 40,
     "umbral_baja_medio": 25,
     "umbral_baja_veterano": 10,
-    "penalizacion_espera_cola": 0.5,
-    "penalizacion_maquina_rota": 10,
-    "penalizacion_sin_maquina": 3,
-    "minutos_paciencia_cola": 4
+
+    "penalizacion_espera_cola": 0.8,
+    "minutos_paciencia_cola": 5,
+
+    "penalizacion_maquina_rota": 5,
+    "penalizacion_sin_maquina": 1,
+    "penalizacion_salida_forzada": 2
   },
   "rutas": {
     "archivo_clientes": "datos_clientes.json",
