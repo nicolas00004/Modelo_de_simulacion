@@ -16,6 +16,7 @@ class Usuario:
                  id_usuario: int, nombre: str, tipo_usuario: str, tiempo_llegada: float,
                  rutina: list, perfil: Perfil, problema: Problema,
                  config: dict,
+                 subtipo: str = "Estudiante", plan_pago: str = "Mensual",  # Nuevos campos
                  ocupado: bool = False, hora_fin: float = 0, faltas_consecutivas: int = 0):
 
         self.env = env
@@ -23,6 +24,8 @@ class Usuario:
         self.id = id_usuario
         self.nombre = nombre
         self.tipo_usuario = tipo_usuario
+        self.subtipo = subtipo
+        self.plan_pago = plan_pago
         self.tiempo_llegada = tiempo_llegada
         self.rutina = rutina
         self.perfil = perfil

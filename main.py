@@ -30,7 +30,7 @@ def main():
     cfg.datos["rutas"]["carpeta_logs"] = raiz_logs
 
     gestor_socios = GestorSocios(cfg)
-    motor = MotorSimulacion(cfg)
+    motor = MotorSimulacion(cfg, gestor_socios)
     socios_db = gestor_socios.inicializar_db()
 
     fecha_actual = datetime(2023, 9, 4)
@@ -38,6 +38,12 @@ def main():
     semana_absoluta = 0
     total_bajas = 0
     historico_global = []
+    
+    # Balance Económico
+    total_acumulado = 0
+    
+    # Precios (cache)
+    PRECIOS = cfg.datos["precios"]
 
     for mes_config in cfg.CALENDARIO_ACADEMICO:
         mes = mes_config["mes"]
@@ -54,6 +60,36 @@ def main():
 
         carpeta_mes = f"{raiz_logs}/{mes}"
         if not os.path.exists(carpeta_mes): os.makedirs(carpeta_mes)
+        
+        # --- CÁLCULO DE INGRESOS MENSUALES (SUSCRIPCIONES) ---
+        ingresos_mes = 0, 0  # (Mensual, Pase Diario/Extra) -> Tuple doesn't support assignment. Let's use vars.
+        ingresos_suscripciones = 0
+        ingresos_pases = 0
+        
+        # 1. Cobrar a los socios existentes (Renovaciones anuales en Septiembre o Mensualidades)
+        print(f"   💰 Procesando cobros para {len(socios_db)} socios...")
+        for s in socios_db:
+            if not s.get("activo", True): continue
+            
+            tipo = s.get("subtipo", "Estudiante")
+            plan = s.get("plan_pago", "Mensual")
+            
+            # Obtener precio base
+            coste = 0
+            tarifas = PRECIOS.get(tipo, PRECIOS["Estudiante"])
+            
+            if plan == "Anual":
+                # Si es Septiembre, cobranza anual general de renovacion
+                # (Asumimos que todos renuevan en Septiembre para simplificar, o cuando entran)
+                if mes == "Septiembre" and s["mes_alta"] != "Septiembre": # Si ya estaba de antes
+                     coste = tarifas.get("Anual", 0) or tarifas.get("Mensual", 0) * 12 # Fallback
+                elif s["mes_alta"] == mes: # Es nuevo de este mes (se cobrará más abajo o aquí si ya estaba en lista?
+                     # Nota: si inyectamos despues, estos no estan aqui aun.
+                     pass 
+            else: # Mensual
+                coste = tarifas.get("Mensual", 16)
+            
+            ingresos_suscripciones += coste
 
         altas_reales_este_mes = 0
         if altas_objetivo > 0:
@@ -61,6 +97,22 @@ def main():
             socios_db = gestor_socios.inyectar_nuevos(socios_db, altas_objetivo, mes)
             len_despues = len(socios_db)
             altas_reales_este_mes = len_despues - len_antes
+            
+            # Cobrar primera cuota a los NUEVOS
+            nuevos = socios_db[len_antes:]
+            for s in nuevos:
+                tipo = s.get("subtipo", "Estudiante")
+                plan = s.get("plan_pago", "Mensual")
+                tarifas = PRECIOS.get(tipo, PRECIOS["Estudiante"])
+                
+                if plan == "Anual":
+                    coste = tarifas.get("Anual", 0)
+                else:
+                    coste = tarifas.get("Mensual", 16)
+                
+                ingresos_suscripciones += coste
+                
+        print(f"      + Ingresos Suscripciones: {ingresos_suscripciones} €")
 
         for s in range(1, semanas + 1):
             semana_absoluta += 1
@@ -101,6 +153,10 @@ def main():
                 gym.abrir_gimnasio()
 
                 visitas, no_shows = motor.generar_flota_semanal(env, gym, socios_db, semana_absoluta, peso)
+                
+                # --- INGRESOS POR PASES DIARIOS ---
+                pases_diarios = sum(1 for u in visitas if u.tipo_usuario == "Pase_Diario")
+                ingresos_pases += pases_diarios * PRECIOS["Pase_Diario"]
 
                 if not visitas and not no_shows:
                     print("      ⚠️ Sin actividad registrada.")
@@ -125,8 +181,14 @@ def main():
 
             fecha_actual += timedelta(weeks=1)
 
+        total_mes = ingresos_suscripciones + ingresos_pases
+        total_acumulado += total_mes
+        print(f"   💵 BALANCE {mes.upper()}: {total_mes} € (Acum: {total_acumulado} €)")
+
     GeneradorReportes.generar_informe_anual(historico_global, raiz_logs)
-    print(f"\n🎓 AÑO ACADÉMICO FINALIZADO. Bajas Totales: {total_bajas}")
+    print(f"\n🎓 AÑO ACADÉMICO FINALIZADO.")
+    print(f"   Bajas Totales: {total_bajas}")
+    print(f"   GANANCIAS TOTALES: {total_acumulado} €")
     print(f"📁 Resultados completos en: {raiz_logs}")
 
 

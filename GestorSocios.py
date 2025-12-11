@@ -59,8 +59,7 @@ class GestorSocios:
         if mes_origen == "Carga_Inicial":
             mes_num = 8  # Agosto (Pretemporada)
         else:
-            mes_num = self.mapa_meses.get(mes_origen, 9)  # Por defecto Septiembre si falla
-
+            mes_num = self.mapa_meses.get(mes_origen, 9) # The instruction provided an invalid code snippet here. I've kept the original line to maintain syntactic correctness.
         dia = random.randint(1, 28)  # Para evitar problemas con febrero
         # Usamos un año genérico, ej: 2023
         return f"{dia:02d}-{mes_num:02d}-2023"
@@ -84,11 +83,27 @@ class GestorSocios:
             # --- NUEVO: Generar fecha de alta ---
             fecha_alta = self._obtener_fecha_simulada(mes_origen)
 
+            # Selección de Subtipo y Plan
+            roll_tipo = random.random()
+            if roll_tipo < 0.70:
+                subtipo = "Estudiante"
+            elif roll_tipo < 0.90:
+                subtipo = "Trabajador"
+            else:
+                subtipo = "Egresado"
+
+            if subtipo == "Egresado":
+                plan = "Mensual"
+            else:
+                plan = "Anual" if random.random() < 0.4 else "Mensual"
+
             socio = {
                 "id": nuevo_id,
                 "nombre": nombre,
                 "genero": genero,
                 "tipo_usuario": "Socio",
+                "subtipo": subtipo,
+                "plan_pago": plan,
                 "mes_alta": mes_origen,  # Para lógica interna (antigüedad)
                 "fecha_alta": fecha_alta,  # Para visualización en JSON
                 "rutina": self.generar_rutina(genero),
@@ -128,3 +143,48 @@ class GestorSocios:
             json.dump(socios_actuales, f, indent=4, ensure_ascii=False)
 
         return socios_actuales
+
+    def convertir_pase_diario(self, usuario_obj, nuevo_plan, fecha_alta):
+        """Convierte un usuario de Pase Diario en Socio registrado."""
+        # Cargamos DB actual
+        if os.path.exists(self.ruta_db):
+            with open(self.ruta_db, "r", encoding="utf-8") as f:
+                db = json.load(f)
+        else:
+            db = []
+
+        nuevo_id = db[-1]["id"] + 1 if db else 1000
+
+        nuevo_socio = {
+            "id": nuevo_id,
+            "nombre": usuario_obj.nombre,  # Mantenemos nombre (o generamos uno real si era dummy)
+            "genero": "Desconocido", # Simplificación
+            "tipo_usuario": "Socio",
+            "subtipo": "Estudiante", # Asumimos estudiante por defecto al convertir, o aleatorio
+            "plan_pago": nuevo_plan,
+            "mes_alta": "Conversion_PaseDiario",
+            "fecha_alta": fecha_alta.strftime("%d-%m-%Y") if hasattr(fecha_alta, 'strftime') else str(fecha_alta),
+            "rutina": usuario_obj.rutina,
+            "perfil": {"tipo": "Fuerza", "energia": usuario_obj.perfil.energia, "prob_descanso": usuario_obj.perfil.prob_descanso},
+            "satisfaccion_acumulada": usuario_obj.satisfaccion,
+            "activo": True,
+            "faltas_consecutivas": 0,
+            "castigado_hasta_semana_absoluta": 0,
+            "fecha_baja": None
+        }
+        
+        # Asignar un subtipo aleatorio para la conversión
+        roll = random.random()
+        if roll < 0.7: nuevo_socio["subtipo"] = "Estudiante"
+        elif roll < 0.9: nuevo_socio["subtipo"] = "Trabajador"
+        else: nuevo_socio["subtipo"] = "Egresado"
+        
+        # Si es egresado, forzar mensual aunque la logica dijo anual (casos bordes)
+        if nuevo_socio["subtipo"] == "Egresado": nuevo_socio["plan_pago"] = "Mensual"
+
+        db.append(nuevo_socio)
+        
+        with open(self.ruta_db, "w", encoding="utf-8") as f:
+            json.dump(db, f, indent=4, ensure_ascii=False)
+            
+        return nuevo_socio

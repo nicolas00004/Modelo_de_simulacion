@@ -64,6 +64,19 @@ class Config:
                     "umbral_baja_veterano": 10,
                     "penalizacion_espera_cola": 0.5
                 },
+                "precios": {
+                    "Estudiante": {"Anual": 65, "Mensual": 16},
+                    "Trabajador": {"Anual": 80, "Mensual": 20},
+                    "Egresado": {"Anual": None, "Mensual": 25},
+                    "Pase_Diario": 2
+                },
+                "probabilidades": {
+                    "pase_diario": 0.05,  # 5% de que un visitante sea de pase diario
+                    "conversion": {
+                        "umbral_anual": 85,
+                        "umbral_mensual": 75
+                    }
+                },
                 "rutas": {
                     "archivo_clientes": "datos_clientes.json",
                     "archivo_gym": "datos_gimnasio.json",
