@@ -1,5 +1,6 @@
 import simpy
 import random
+from datetime import timedelta
 from usuario import Usuario
 from GestorSocios import PerfilGenerado
 
@@ -10,7 +11,7 @@ class MotorSimulacion:
 
     def clasificar_maquinas(self, gimnasio):
         pierna = ["Prensa", "Sentadilla", "Extensión", "Femoral", "Abductores", "Gemelos", "Hack"]
-        torso = ["Press", "Jalón", "Remo", "Dominadas", "Smith", "Scott", "Pecho"]
+        torso = ["Press", "Jalón", "Remo", "Torre", "Dominadas", "Smith", "Scott", "Pecho"]
         for m in gimnasio.maquinas:
             if m.tipo_maquina == "Musculacion":
                 if any(p in m.nombre for p in pierna):
@@ -21,45 +22,27 @@ class MotorSimulacion:
                     m.tipo_maquina = "Musculacion_Torso"
 
     def generar_flota_semanal(self, env, gimnasio, base_datos, semana_abs, factor):
-        programados = []  # Los que van a ir físicamente
-        lista_no_shows = []  # Los que reservaron y fallaron (para castigarlos luego)
+        programados = []
+        lista_no_shows = []
 
-        # --- 1. FILTRO DE ACCESO (EL PORTERO) ---
         socios_permitidos = []
-        bloqueados_baja = 0
-        bloqueados_castigo = 0
-
         for s in base_datos:
-            # Si está dado de baja, NO ENTRA
-            if not s.get("activo", True):
-                bloqueados_baja += 1
-                continue
-
-            # Si está castigado esta semana, NO ENTRA
-            # Ejemplo: Castigado hasta sem 5. Estamos en sem 4. (4 < 5) -> True -> Bloqueado.
-            if s.get("castigado_hasta_semana_absoluta", 0) > semana_abs:
-                bloqueados_castigo += 1
-                continue
-
+            if not s.get("activo", True): continue
+            if s.get("castigado_hasta_semana_absoluta", 0) > semana_abs: continue
             socios_permitidos.append(s)
 
         cupo = int(self.config.CLIENTES_BASE * factor)
-        print(
-            f"   ℹ️ Acceso: {len(socios_permitidos)} permitidos | 🚫 Bloqueados: {bloqueados_baja} (Baja) / {bloqueados_castigo} (Castigo)")
+        print(f"   ℹ️ Acceso: {len(socios_permitidos)} permitidos | Cupo: ~{cupo} pax/sesión")
 
         if not socios_permitidos: return [], []
 
-        # --- 2. GENERACIÓN DE RESERVAS Y ASISTENCIA ---
         for dia_idx, nombre_dia in enumerate(self.config.DIAS_SEMANA):
             sesiones = self.config.obtener_sesiones_por_dia(nombre_dia)
             reservados_hoy = set()
 
             for sesion in range(sesiones):
                 var = self.config.datos["simulacion"]["variacion_afluencia"]
-                # Calculamos cuántos reservan plaza
                 reservas_totales = int(random.uniform(1.0 - var, 1.0 + var) * cupo)
-
-                # Elegimos quiénes reservan de los permitidos
                 candidatos = [s for s in socios_permitidos if s['id'] not in reservados_hoy]
                 if not candidatos: continue
 
@@ -68,16 +51,11 @@ class MotorSimulacion:
 
                 for dato in seleccionados:
                     reservados_hoy.add(dato['id'])
-
-                    # --- SIMULACIÓN DE "NO SHOW" (GENTE QUE FALLA) ---
-                    # 5% de probabilidad de reservar y no ir
                     es_no_show = random.random() < 0.05
 
                     if es_no_show:
-                        # Lo añadimos a la lista negra de esta semana
                         lista_no_shows.append(dato['id'])
                     else:
-                        # Sí viene, creamos el usuario físico
                         u = Usuario(
                             id_usuario=dato["id"], nombre=dato["nombre"], tipo_usuario="Socio",
                             tiempo_llegada=inicio + random.uniform(0, 10), hora_fin=inicio + random.randint(60, 90),
@@ -110,12 +88,43 @@ class MotorSimulacion:
 
             u.process = env.process(u.entrenar(90))
 
-    def gestor_semanal(self, env, admin_logs):
-        for dia in self.config.DIAS_SEMANA:
+    # --- MODIFICADO: AHORA RECIBE 'usuarios_programados' PARA EXPULSARLOS ---
+    def gestor_semanal(self, env, admin_logs, fecha_lunes, usuarios_programados):
+        for i, dia in enumerate(self.config.DIAS_SEMANA):
+            fecha_dia = fecha_lunes + timedelta(days=i)
+            fecha_str = fecha_dia.strftime("%d/%m/%Y")
+
+            print(f"\n      🌞 {dia.upper()} [{fecha_str}]")
+            print(f"      {'-' * 30}")
+
             sesiones = self.config.obtener_sesiones_por_dia(dia)
-            for i in range(1, sesiones + 1):
-                admin_logs.cambiar_sesion(dia, i)
+            for s in range(1, sesiones + 1):
+                admin_logs.cambiar_sesion(dia, s)
+
+                hora_inicio = env.now
+                print(f"         🔔 [T={hora_inicio:.0f}] Inicio Sesión {s}")
+
                 yield env.timeout(self.config.DURACION_SESION)
+
+                hora_fin = env.now
+                print(f"         🔕 [T={hora_fin:.0f}] Fin Sesión {s}")
+
+                # --- LÓGICA DE EXPULSIÓN ---
+                # Buscamos a cualquiera cuyo proceso siga vivo
+                expulsados = 0
+                for u in usuarios_programados:
+                    if u.process and u.process.is_alive:
+                        # Comprobamos que sea del día actual (para no interrumpir a gente de mañana)
+                        # Aunque 'process.is_alive' solo será true si ya ha llegado
+                        try:
+                            u.process.interrupt(cause="FIN_SESION")
+                            expulsados += 1
+                        except RuntimeError:
+                            # Puede pasar si el proceso muere justo en este milisegundo
+                            pass
+
+                if expulsados > 0:
+                    print(f"         🚨 Se expulsó a {expulsados} usuarios al cerrar la sesión.")
 
             restante = (self.config.MINUTOS_MAXIMOS_POR_DIA - sesiones * self.config.DURACION_SESION)
             if restante > 0: yield env.timeout(restante)
