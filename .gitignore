@@ -1,7 +1,8 @@
 # Created by https://www.toptal.com/developers/gitignore/api/python
 # Edit at https://www.toptal.com/developers/gitignore?templates=python
 
-logs_mensuales/
+logs_*/
+datos_clientes.json
 
 ### Python ###
 # Byte-compiled / optimized / DLL files

@@ -19,6 +19,19 @@
     "penalizacion_sin_maquina": 1,
     "penalizacion_salida_forzada": 2
   },
+  "precios": {
+    "Estudiante": {"Anual": 65, "Mensual": 16},
+    "Trabajador": {"Anual": 80, "Mensual": 20},
+    "Egresado": {"Anual": null, "Mensual": 25},
+    "Pase_Diario": 2
+  },
+  "probabilidades": {
+    "pase_diario": 0.05,
+    "conversion": {
+        "umbral_anual": 85,
+        "umbral_mensual": 75
+    }
+  },
   "rutas": {
     "archivo_clientes": "datos_clientes.json",
     "archivo_gym": "datos_gimnasio.json",

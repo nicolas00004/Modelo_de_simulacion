@@ -33,8 +33,9 @@ class Config:
             {"mes": "Abril", "semanas": 4, "peso_afluencia": 1.0, "nuevas_altas_aprox": 60, "abierto": True},
             {"mes": "Mayo", "semanas": 4, "peso_afluencia": 1.1, "nuevas_altas_aprox": 40, "abierto": True},
 
-            # VERANO: Casi nadie se apunta
-            {"mes": "Junio", "semanas": 3, "peso_afluencia": 0.8, "nuevas_altas_aprox": 10, "abierto": True}
+            # VERANO: Casi nadie se apunta, pero ahora añadimos Julio
+            {"mes": "Junio", "semanas": 3, "peso_afluencia": 0.8, "nuevas_altas_aprox": 10, "abierto": True},
+            {"mes": "Julio", "semanas": 4, "peso_afluencia": 0.5, "nuevas_altas_aprox": 5, "abierto": True}
         ]
 
         # Mapeo de meses para cálculos de antigüedad
@@ -62,6 +63,19 @@ class Config:
                     "umbral_baja_medio": 25,
                     "umbral_baja_veterano": 10,
                     "penalizacion_espera_cola": 0.5
+                },
+                "precios": {
+                    "Estudiante": {"Anual": 65, "Mensual": 16},
+                    "Trabajador": {"Anual": 80, "Mensual": 20},
+                    "Egresado": {"Anual": None, "Mensual": 25},
+                    "Pase_Diario": 2
+                },
+                "probabilidades": {
+                    "pase_diario": 0.05,  # 5% de que un visitante sea de pase diario
+                    "conversion": {
+                        "umbral_anual": 85,
+                        "umbral_mensual": 75
+                    }
                 },
                 "rutas": {
                     "archivo_clientes": "datos_clientes.json",

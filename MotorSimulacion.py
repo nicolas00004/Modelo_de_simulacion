@@ -6,8 +6,9 @@ from GestorSocios import PerfilGenerado
 
 
 class MotorSimulacion:
-    def __init__(self, config):
+    def __init__(self, config, gestor_socios=None):
         self.config = config
+        self.gestor_socios = gestor_socios
 
     def clasificar_maquinas(self, gimnasio):
         pierna = ["Prensa", "Sentadilla", "Extensión", "Femoral", "Abductores", "Gemelos", "Hack"]
@@ -58,6 +59,7 @@ class MotorSimulacion:
                     else:
                         u = Usuario(
                             id_usuario=dato["id"], nombre=dato["nombre"], tipo_usuario="Socio",
+                            subtipo=dato.get("subtipo", "Estudiante"), plan_pago=dato.get("plan_pago", "Mensual"),
                             tiempo_llegada=inicio + random.uniform(0, 10), hora_fin=inicio + random.randint(60, 90),
                             rutina=dato["rutina"], perfil=PerfilGenerado(dato["perfil"]), problema=None,
                             config=self.config.datos, env=env, gimnasio=gimnasio,
@@ -65,6 +67,28 @@ class MotorSimulacion:
                         )
                         u.satisfaccion = dato.get("satisfaccion_acumulada", 100)
                         programados.append(u)
+
+                # --- GENERACIÓN DE PASES DIARIOS ---
+                prob_pase = self.config.datos.get("probabilidades", {}).get("pase_diario", 0.05)
+                # Intentamos generar algunos pases diarios extra (independientes del cupo de socios)
+                n_pases = int(random.uniform(0, 2)) if random.random() < prob_pase else 0
+                
+                for _ in range(n_pases):
+                    # Crear usuario ficticio de pase diario
+                    inicio_pase = (dia_idx * self.config.MINUTOS_MAXIMOS_POR_DIA) + (sesion * self.config.DURACION_SESION)
+                    
+                    # Generar perfil aleatorio
+                    perfil_dummy = {"tipo": "Mix", "energia": 200, "prob_descanso": 0.3}
+                    rutina_dummy = [{"tipo_maquina_deseada": "Cardio", "tiempo_uso": 20}, {"tipo_maquina_deseada": "Musculacion_Torso", "tiempo_uso": 30}]
+                    
+                    u_pase = Usuario(
+                        id_usuario=999999 + random.randint(1, 9999), nombre=f"Visitante-{random.randint(100,999)}", 
+                        tipo_usuario="Pase_Diario", subtipo="Visitante", plan_pago="Diario",
+                        tiempo_llegada=inicio_pase + random.uniform(5, 15), hora_fin=inicio_pase + 90,
+                        rutina=rutina_dummy, perfil=PerfilGenerado(perfil_dummy), problema=None,
+                        config=self.config.datos, env=env, gimnasio=gimnasio
+                    )
+                    programados.append(u_pase)
 
         return programados, lista_no_shows
 
@@ -86,7 +110,36 @@ class MotorSimulacion:
                  "satisfaccion_actual": u.satisfaccion})
             admin_logs.registrar_entrada_usuario()
 
-            u.process = env.process(u.entrenar(90))
+            # Wrapper para controlar el fin de sesión y conversiones
+            u.process = env.process(self._wrapper_entrenamiento(env, u, admin_logs))
+
+    def _wrapper_entrenamiento(self, env, usuario, admin_logs):
+        """Envuelve el proceso de entrenamiento para ejecutar lógica post-sesión."""
+        try:
+            yield from usuario.entrenar(90)
+        except simpy.Interrupt as i:
+            # Si fue interrumpido (ej. fin de sesión), propagamos o manejamos
+            # Pero usuario.entrenar ya maneja interrupciones internas.
+            pass
+        
+        # --- Lógica de Conversión ---
+        if usuario.tipo_usuario == "Pase_Diario" and self.gestor_socios:
+            sat = usuario.satisfaccion
+            umbrales = self.config.datos["probabilidades"]["conversion"]
+            nuevo_plan = None
+            
+            if sat >= umbrales["umbral_anual"]:
+                nuevo_plan = "Anual"
+            elif sat >= umbrales["umbral_mensual"]:
+                nuevo_plan = "Mensual"
+            
+            if nuevo_plan:
+                # CONVERTIR
+                print(f"      ✨ ¡NUEVA CONVERSIÓN! {usuario.nombre} (Sat: {sat}) -> Plan {nuevo_plan}")
+                admin_logs.log(f"Convierte a {nuevo_plan}", "CONVERSION")
+                self.gestor_socios.convertir_pase_diario(usuario, nuevo_plan, usuario.dia_sesion) # Pasamos día como fecha aprox
+            else:
+                print(f"      👋 {usuario.nombre} no se inscribe (Sat: {sat})")
 
     # --- MODIFICADO: AHORA RECIBE 'usuarios_programados' PARA EXPULSARLOS ---
     def gestor_semanal(self, env, admin_logs, fecha_lunes, usuarios_programados):
