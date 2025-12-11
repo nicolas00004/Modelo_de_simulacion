@@ -33,8 +33,9 @@ class Config:
             {"mes": "Abril", "semanas": 4, "peso_afluencia": 1.0, "nuevas_altas_aprox": 60, "abierto": True},
             {"mes": "Mayo", "semanas": 4, "peso_afluencia": 1.1, "nuevas_altas_aprox": 40, "abierto": True},
 
-            # VERANO: Casi nadie se apunta
-            {"mes": "Junio", "semanas": 3, "peso_afluencia": 0.8, "nuevas_altas_aprox": 10, "abierto": True}
+            # VERANO: Casi nadie se apunta, pero ahora añadimos Julio
+            {"mes": "Junio", "semanas": 3, "peso_afluencia": 0.8, "nuevas_altas_aprox": 10, "abierto": True},
+            {"mes": "Julio", "semanas": 4, "peso_afluencia": 0.5, "nuevas_altas_aprox": 5, "abierto": True}
         ]
 
         # Mapeo de meses para cálculos de antigüedad
