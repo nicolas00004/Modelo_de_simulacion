@@ -19,10 +19,13 @@ class Gimnasio:
         self.capacidad = capacidad
         self.n_usuarios = n_usuarios
         self.usuarios_total = usuarios_total
+        
+        # Acumulador de costes de reparación
+        self.costes_reparacion_acumulados = 0
 
-    def cargar_datos_json(self, ruta_archivo):
+    def cargar_datos_json(self, archivo):
         try:
-            with open(ruta_archivo, 'r', encoding='utf-8') as f:
+            with open(archivo, 'r', encoding='utf-8') as f:
                 datos = json.load(f)
             if 'configuracion' in datos:
                 self.capacidad = datos['configuracion'].get('capacidad_maxima', self.capacidad)
@@ -34,13 +37,13 @@ class Gimnasio:
             if 'accesorios' in datos:
                 self.accesorios = [Accesorios(**acc) for acc in datos['accesorios']]
 
-            print(f"Datos cargados correctamente desde {ruta_archivo}")
+            print(f"Datos cargados correctamente desde {archivo}")
             self.mostrar_resumen()
 
         except FileNotFoundError:
-            print(f" Error: No se encontró el archivo {ruta_archivo}")
+            print(f" Error: No se encontró el archivo {archivo}")
         except json.JSONDecodeError:
-            print(f" Error: El archivo {ruta_archivo} no tiene un formato JSON válido.")
+            print(f" Error: El archivo {archivo} no tiene un formato JSON válido.")
         except TypeError as e:
             print(f" Error de datos: Alguna clave del JSON no coincide con el __init__ de la clase. Detalle: {e}")
         except Exception as e:
@@ -59,3 +62,7 @@ class Gimnasio:
 
     def cerrar_gimnasio(self):
         print("El gimnasio está cerrado.")
+
+    def registrar_reparacion(self, coste):
+        """Registra un coste de reparación."""
+        self.costes_reparacion_acumulados += coste

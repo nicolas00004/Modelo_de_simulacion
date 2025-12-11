@@ -77,6 +77,11 @@ class Config:
                         "umbral_mensual": 75
                     }
                 },
+                "gastos": {
+                    "salario_monitor": 1200,
+                    "coste_reparacion_min": 20,
+                    "coste_reparacion_max": 300
+                },
                 "rutas": {
                     "archivo_clientes": "datos_clientes.json",
                     "archivo_gym": "datos_gimnasio.json",

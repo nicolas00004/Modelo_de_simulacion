@@ -13,8 +13,12 @@ class Maquina:
         self.nombre = nombre
         self.id = id
         self.tipo_maquina = tipo_maquina
+        self.nombre = nombre
+        self.id = id
+        self.tipo_maquina = tipo_maquina
         self.disponibilidad = disponibilidad
-        # durabilidad argument ignored/removed
+        # Referencia al gimnasio padre se asignará post-init si no viene en kwargs
+        self.gimnasio = kwargs.get("gimnasio", None)
 
         self.env = None
         self.resource = None
@@ -91,6 +95,13 @@ class Maquina:
         yield simpy.AllOf(self.env, requests_mecanico)
 
         print(f"[{self.env.now:6.2f}] 🔧 MANTENIMIENTO: Reparando {self.nombre} ({averia.tiempo_solucion}m)...")
+        
+        # --- CÁLCULO DE COSTES ---
+        if self.gimnasio:
+            coste = random.randint(20, 300)
+            self.gimnasio.registrar_reparacion(coste)
+            print(f"      💸 Coste reparación: {coste}€")
+            
         yield self.env.timeout(averia.tiempo_solucion)
 
         # Liberamos
@@ -109,9 +120,9 @@ class Maquina:
         if not self.disponibilidad:
             raise MachineBrokenError(f"{self.nombre} está rota.")
 
-        # Chequeo de rotura al usar (1% de probabilidad)
+        # Chequeo de rotura al usar (0.01% de probabilidad - 1 en 10,000)
         # Solo si puede romperse
-        if self.puede_romperse and random.random() < 0.01:
+        if self.puede_romperse and random.random() < 0.0001:
             self.romper()
             raise MachineBrokenError(f"{self.nombre} se rompió mientras {usuario.nombre} la usaba.")
 

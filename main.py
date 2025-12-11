@@ -66,6 +66,9 @@ def main():
         ingresos_suscripciones = 0
         ingresos_pases = 0
         
+        # Variables para acumular gastos de reparación de TODAS las semanas del mes
+        gastos_reparaciones_mes = 0
+
         # 1. Cobrar a los socios existentes (Renovaciones anuales en Septiembre o Mensualidades)
         print(f"   💰 Procesando cobros para {len(socios_db)} socios...")
         for s in socios_db:
@@ -149,7 +152,11 @@ def main():
                 gym = Gimnasio()
                 gym.cargar_datos_json(cfg.datos["rutas"]["archivo_gym"])
                 motor.clasificar_maquinas(gym)
-                for m in gym.maquinas: m.iniciar_simulacion(env)
+                motor.clasificar_maquinas(gym)
+                # Pasar referencia de gimnasio a las máquinas (para reportar gastos)
+                for m in gym.maquinas: 
+                    m.gimnasio = gym
+                    m.iniciar_simulacion(env)
                 gym.abrir_gimnasio()
 
                 visitas, no_shows = motor.generar_flota_semanal(env, gym, socios_db, semana_absoluta, peso)
@@ -166,6 +173,9 @@ def main():
                     env.process(motor.gestor_semanal(env, admin_logs, fecha_actual, visitas))
                     env.run(until=cfg.TIEMPO_SEMANAL_SIMULACION)
 
+                # Acumular gastos de reparación de esta semana
+                gastos_reparaciones_mes += gym.costes_reparacion_acumulados
+            
                 gym.cerrar_gimnasio()
 
                 altas_para_reporte = altas_reales_este_mes if s == 1 else 0
@@ -181,9 +191,27 @@ def main():
 
             fecha_actual += timedelta(weeks=1)
 
-        total_mes = ingresos_suscripciones + ingresos_pases
-        total_acumulado += total_mes
-        print(f"   💵 BALANCE {mes.upper()}: {total_mes} € (Acum: {total_acumulado} €)")
+
+        
+        # --- CÁLCULO FINAL DE BALANCE ---
+        # 1. Salarios Monitores (1200 por monitor)
+        # Asumimos que los monitores son constantes en número, cogemos del último 'gym' creado o 4 por defecto
+        num_monitores = len(gym.monitores) if 'gym' in locals() and gym else 4 
+        gastos_personal = num_monitores * cfg.datos["gastos"]["salario_monitor"]
+        
+        # 2. Reparaciones (Sumado semana a semana)
+        
+        gastos_totales = gastos_personal + gastos_reparaciones_mes
+        balance_neto = (ingresos_suscripciones + ingresos_pases) - gastos_totales
+        
+        total_acumulado += balance_neto
+
+        print(f"   💵 BALANCE {mes.upper()}:")
+        print(f"      + Ingresos: {ingresos_suscripciones + ingresos_pases} €")
+        print(f"      - Gastos Personal: {gastos_personal} €")
+        print(f"      - Gastos Reparaciones: {gastos_reparaciones_mes} €")
+        print(f"      = NETO: {balance_neto} € (Acumulado: {total_acumulado} €)")
+
 
     GeneradorReportes.generar_informe_anual(historico_global, raiz_logs)
     print(f"\n🎓 AÑO ACADÉMICO FINALIZADO.")

@@ -220,21 +220,6 @@
       "nombre": "Carlos Pérez",
       "id": "M01",
       "especialidad": "Musculacion"
-    },
-    {
-      "nombre": "Ana García",
-      "id": "M02",
-      "especialidad": "Yoga y Pilates"
-    },
-    {
-      "nombre": "Luis 'Crossfit' Torres",
-      "id": "M03",
-      "especialidad": "Entrenamiento Funcional"
-    },
-    {
-      "nombre": "Laura Danza",
-      "id": "M04",
-      "especialidad": "Zumba y Cardio"
     }
   ],
   "accesorios": [
