@@ -38,6 +38,8 @@ class GestorSocios:
         self.nombres_m = ["Ana", "María", "Laura", "Sofia", "Lucía", "Elena", "Carmen", "Paula", "Marta", "Isabel"]
         self.apellidos = ["García", "López", "Martínez", "Sánchez", "Pérez", "Gómez", "Ruiz", "Hernández", "Díaz",
                           "Moreno"]
+        self.socios_db = []  # Cache en memoria de la base de datos
+
 
         self.mapa_meses = {
             "Septiembre": 9, "Octubre": 10, "Noviembre": 11, "Diciembre": 12,
@@ -99,20 +101,69 @@ class GestorSocios:
 
     def inyectar_nuevos(self, socios_actuales, cantidad_aprox, mes):
         """Añade nuevos socios a la base de datos (Picos de Septiembre/Enero)."""
-        if cantidad_aprox <= 0: return socios_actuales
+        # Asegurar consistencia con la caché interna
+        self.socios_db = socios_actuales
+        
+        if cantidad_aprox <= 0: return self.socios_db
+        
         cantidad_real = int(random.uniform(0.9, 1.1) * cantidad_aprox)
-        last_id = socios_actuales[-1]["id"] if socios_actuales else 100
+        last_id = self.socios_db[-1]["id"] if self.socios_db else 100
         nuevos = self.generar_lote(cantidad_real, last_id + 1, mes)
-        socios_actuales.extend(nuevos)
-        self._guardar_db(socios_actuales)
-        return socios_actuales
+        
+        self.socios_db.extend(nuevos)
+        self._guardar_db(self.socios_db)
+        return self.socios_db
+
+    def convertir_pase_diario(self, usuario_obj, nuevo_plan, dia_actual):
+        """Convierte un visitante (Pase Diario) en socio registrado."""
+        if not self.socios_db:
+            # Fallback si por alguna razón está vacía, intentar recargar o usar id base
+            last_id = 1000
+        else:
+            last_id = self.socios_db[-1]["id"]
+            
+        new_id = last_id + 1
+        
+        # Generar identidad realista para el nuevo socio
+        es_mujer = random.random() < 0.5
+        genero = "Femenino" if es_mujer else "Masculino"
+        nombre_pila = random.choice(self.nombres_m if es_mujer else self.nombres_h)
+        apellido = random.choice(self.apellidos)
+        nombre_completo = f"{nombre_pila} {apellido}"
+        
+        nuevo_socio = {
+            "id": new_id,
+            "nombre": nombre_completo,
+            "genero": genero,
+            "subtipo": "Estudiante", # Asumimos estudiante por defecto
+            "plan_pago": nuevo_plan,
+            "mes_alta": dia_actual,
+            "fecha_alta": f"Semana-{dia_actual}",
+            "rutina": self._generar_rutina_por_genero(genero),
+            "perfil": self._generar_perfil_aleatorio(),
+            "satisfaccion_acumulada": usuario_obj.satisfaccion,
+            "activo": True,
+            "faltas_consecutivas": 0,
+            "fecha_baja": None
+        }
+        
+        self.socios_db.append(nuevo_socio)
+        self._guardar_db(self.socios_db)
+        
+        # Actualizar objeto Usuario en tiempo real (para logs y visualización)
+        usuario_obj.id = new_id
+        usuario_obj.nombre = nombre_completo
+        usuario_obj.tipo_usuario = "Socio"
+        usuario_obj.plan_pago = nuevo_plan
+        usuario_obj.rutina = nuevo_socio["rutina"] # Actualizar su rutina a una completa
+
 
     def inicializar_db(self):
         """Genera la población inicial del gimnasio."""
         iniciales = self.config.datos["simulacion"].get("usuarios_totales_iniciales", 300)
-        socios = self.generar_lote(iniciales, 100, "Septiembre")
-        self._guardar_db(socios)
-        return socios
+        self.socios_db = self.generar_lote(iniciales, 100, "Septiembre")
+        self._guardar_db(self.socios_db)
+        return self.socios_db
 
     def _guardar_db(self, lista_socios):
         with open(self.ruta_db, "w", encoding="utf-8") as f:

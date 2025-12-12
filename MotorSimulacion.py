@@ -84,13 +84,21 @@ class MotorSimulacion:
         try:
             yield from u.entrenar(90)
             if u.tipo_usuario == "Pase_Diario" and u.satisfaccion > 70:
-                pago = self.config.datos["precios"]["Estudiante"]["Mensual"]
+                # Decidir plan (60% Mensual, 40% Anual - similar a generación inicial)
+                plan_elegido = "Mensual" if random.random() < 0.6 else "Anual"
+                
+                # Calcular pago inicial según el plan
+                # Asumimos tarifa de Estudiante para nuevos conversos por ahora
+                tarifa = self.config.datos["precios"]["Estudiante"]
+                pago = tarifa[plan_elegido]
+                
                 u.gimnasio.balance += pago
-                msg = f"      ✨ ¡CONVERSIÓN! {u.nombre} se apunta al centro (+{pago}€)"
+                msg = f"      ✨ ¡CONVERSIÓN! {u.nombre} se apunta al centro ({plan_elegido}: +{pago}€)"
                 print(msg)
                 admin_logs.log(msg)
+                
                 if self.gestor_socios:
-                    self.gestor_socios.convertir_pase_diario(u, "Mensual", u.dia_sesion)
+                    self.gestor_socios.convertir_pase_diario(u, plan_elegido, u.dia_sesion)
         except:
             pass
 
