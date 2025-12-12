@@ -143,10 +143,12 @@ class GeneradorReportes:
         return reporte_semanal
 
     @staticmethod
-    def generar_informe_anual(historico, carpeta_raiz):
+    def generar_informe_anual(historico, carpeta_raiz, balance_final=0, beneficio_neto=0):
         resumen = {
             "total_visitas": sum(h["asistentes"] for h in historico),
             "total_bajas": sum(h["bajas"] for h in historico),
+            "balance_final": balance_final,
+            "beneficio_neto": beneficio_neto,
             "historico_detallado": historico
         }
         ruta_final = f"{carpeta_raiz}/Reporte_ANUAL_FINAL.json"

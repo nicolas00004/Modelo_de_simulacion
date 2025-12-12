@@ -22,7 +22,8 @@ class Gimnasio:
         self.usuarios_total = usuarios_total
 
         # --- ATRIBUTOS ECONÓMICOS ---
-        self.balance = 25000  # Capital inicial
+        self.capital_inicial = 25000
+        self.balance = self.capital_inicial  # Capital inicial
         self.costes_reparacion_acumulados = 0
 
     # --- LÓGICA DE ESTADO ---

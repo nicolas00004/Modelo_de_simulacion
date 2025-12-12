@@ -101,8 +101,14 @@ def main():
         print(f"   📊 Resumen {mes}: Beneficio Neto {gym.balance - balance_inicio_mes:.2f}€")
 
     # 5. REPORTE ANUAL
-    GeneradorReportes.generar_informe_anual(historico_global, raiz_logs)
-    print(f"\n✅ SIMULACIÓN FINALIZADA. Bajas Totales: {total_bajas_año} | Capital Final: {gym.balance:.2f}€")
+    # Cálculo de Ganancia Neta: Balance Final - Capital Inicial
+    beneficio_neto = gym.balance - gym.capital_inicial
+    
+    GeneradorReportes.generar_informe_anual(historico_global, raiz_logs, gym.balance, beneficio_neto)
+    print(f"\n✅ SIMULACIÓN FINALIZADA.")
+    print(f"   📉 Bajas Totales: {total_bajas_año}")
+    print(f"   💰 Capital Final: {gym.balance:.2f}€")
+    print(f"   📈 BENEFICIO NETO: {beneficio_neto:.2f}€")
 
 if __name__ == "__main__":
     main()
