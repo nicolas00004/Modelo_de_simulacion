@@ -43,9 +43,35 @@ def generar_dashboard_maestro():
     asistentes = [m.get("asistentes", 0) for m in mensual]
     bajas = [m.get("bajas", 0) for m in mensual]
     satisfaccion = [m.get("satisfaccion", 0) for m in mensual]
-    ingresos = [m.get("ingresos_mes", 0) for m in mensual]
-    gastos = [m.get("gastos_mes", 0) for m in mensual]
-    beneficio = [m.get("beneficio_neto", 0) for m in mensual]
+    # Extraemos los ACUMULADOS del log (Balance y Costes Totales)
+    balance_acumulado = [m.get("ingresos_mes", 0) for m in mensual]
+    gastos_acumulado = [m.get("gastos_mes", 0) for m in mensual]
+
+    # Calculamos los flujos MENSUALES (Deltas)
+    ingresos = []
+    gastos = []
+    beneficio = []
+
+    ultimo_balance = 25000  # Capital Inicial (Hardcoded en Gimnasio.py)
+    ultimo_gasto = 0
+
+    for bal, gas_acum in zip(balance_acumulado, gastos_acumulado):
+        # Gastos del periodo = Gasto Acumulado Actual - Gasto Acumulado Anterior
+        gasto_mes = gas_acum - ultimo_gasto
+
+        # Ingresos del periodo = (Balance Actual - Balance Anterior) + Gastos del periodo
+        # Derivado de: Balance_Actual = Balance_Anterior + Ingresos - Gastos
+        ingreso_mes = (bal - ultimo_balance) + gasto_mes
+
+        # Beneficio Neto = Ingresos - Gastos
+        ben_mes = ingreso_mes - gasto_mes
+
+        ingresos.append(ingreso_mes)
+        gastos.append(gasto_mes)
+        beneficio.append(ben_mes)
+
+        ultimo_balance = bal
+        ultimo_gasto = gas_acum
     activos_evolucion = [m.get("socios_activos", 0) for m in mensual]
 
     # 3. PROCESAMIENTO DE CLIENTES (Demografia y Rutinas)
