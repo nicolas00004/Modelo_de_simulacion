@@ -104,10 +104,19 @@ def main():
     # Cálculo de Ganancia Neta: Balance Final - Capital Inicial
     beneficio_neto = gym.balance - gym.capital_inicial
     
-    GeneradorReportes.generar_informe_anual(historico_global, raiz_logs, gym.balance, beneficio_neto)
+    GeneradorReportes.generar_informe_anual(historico_global, raiz_logs)
+    
+    # Calcular satisfacción media final
+    activos_finales = [s for s in socios_db if s.get("activo", True)]
+    if activos_finales:
+        media_sat = sum(s.get("satisfaccion_acumulada", 0) for s in activos_finales) / len(activos_finales)
+    else:
+        media_sat = 0
+
     print(f"\n✅ SIMULACIÓN FINALIZADA.")
     print(f"   📉 Bajas Totales: {total_bajas_año}")
     print(f"   💰 Capital Final: {gym.balance:.2f}€")
+    print(f"   😊 Satisfacción Media: {media_sat:.2f}/100")
     print(f"   📈 BENEFICIO NETO: {beneficio_neto:.2f}€")
 
 if __name__ == "__main__":
