@@ -1,28 +1,30 @@
-import random
 import json
 import os
+import random
 
 
 class PerfilGenerado:
     def __init__(self, datos_dict):
-        self.tipo = datos_dict["tipo"]
-        self.energia = datos_dict["energia"]
-        self.prob_descanso = datos_dict["prob_descanso"]
-        self.paciencia_maxima = random.randint(2, 5)
+        self.tipo = datos_dict.get("tipo", "Mix")
+        self.energia = datos_dict.get("energia", 200)
+        self.prob_descanso = datos_dict.get("prob_descanso", 0.2)
+        # Paciencia variable: determina cuánto está dispuesto a esperar en colas
+        self.paciencia_maxima = random.randint(3, 7)
 
     def tiempo_preparacion(self): return random.randint(3, 8)
 
     def decidir_descanso(self): return random.random() < self.prob_descanso
 
-    def tiempo_descanso(self): return random.randint(1, 3)
+    def tiempo_descanso(self): return random.randint(1, 4)
 
-    def decidir_preguntar_monitor(self): return random.random() < 0.15
+    def decidir_preguntar_monitor(self): return random.random() < 0.10
 
-    def tiempo_pregunta_monitor(self): return random.randint(2, 5)
+    # Lógica para interactuar con accesorios (pesas, esterillas, etc.)
+    def decidir_usar_accesorio(self):
+        prob = 0.40 if self.tipo == "Fuerza" else 0.15
+        return random.random() < prob
 
-    def decidir_usar_accesorio(self): return random.random() < 0.20
-
-    def tiempo_uso_accesorio(self): return random.randint(5, 15)
+    def tiempo_uso_accesorio(self): return random.randint(5, 12)
 
 
 class GestorSocios:
@@ -30,161 +32,88 @@ class GestorSocios:
         self.config = config
         self.ruta_db = config.datos["rutas"]["archivo_clientes"]
 
+        # Listas para generar identidades realistas
         self.nombres_h = ["Juan", "Pedro", "Luis", "Carlos", "Javier", "Miguel", "Alejandro", "Pablo", "Sergio",
                           "Daniel"]
         self.nombres_m = ["Ana", "María", "Laura", "Sofia", "Lucía", "Elena", "Carmen", "Paula", "Marta", "Isabel"]
         self.apellidos = ["García", "López", "Martínez", "Sánchez", "Pérez", "Gómez", "Ruiz", "Hernández", "Díaz",
                           "Moreno"]
 
-        # Mapa para convertir nombre de mes a número
         self.mapa_meses = {
-            "Enero": 1, "Febrero": 2, "Marzo": 3, "Abril": 4, "Mayo": 5, "Junio": 6,
-            "Julio": 7, "Agosto": 8, "Septiembre": 9, "Octubre": 10, "Noviembre": 11, "Diciembre": 12
+            "Septiembre": 9, "Octubre": 10, "Noviembre": 11, "Diciembre": 12,
+            "Enero": 1, "Febrero": 2, "Marzo": 3, "Abril": 4, "Mayo": 5, "Junio": 6, "Julio": 7
         }
 
-    def generar_rutina(self, genero):
-        rutina = []
-        opciones = ["Musculacion_Pierna", "Musculacion_Torso", "Cardio"]
-        # Probabilidades según género
-        pesos = [0.60, 0.20, 0.20] if genero == "Femenino" else [0.20, 0.60, 0.20]
-
-        for _ in range(random.randint(4, 6)):
-            tipo = random.choices(opciones, weights=pesos, k=1)[0]
-            tiempo = random.randint(15, 30) if tipo == "Cardio" else random.randint(20, 40)
-            rutina.append({"tipo_maquina_deseada": tipo, "tiempo_uso": tiempo})
-        return rutina
-
-    def _obtener_fecha_simulada(self, mes_origen):
-        """Genera una fecha DD-MM-AAAA basada en el mes de alta."""
-        if mes_origen == "Carga_Inicial":
-            mes_num = 8  # Agosto (Pretemporada)
-        else:
-            mes_num = self.mapa_meses.get(mes_origen, 9) # The instruction provided an invalid code snippet here. I've kept the original line to maintain syntactic correctness.
-        dia = random.randint(1, 28)  # Para evitar problemas con febrero
-        # Usamos un año genérico, ej: 2023
-        return f"{dia:02d}-{mes_num:02d}-2023"
-
     def generar_lote(self, cantidad, id_inicial, mes_origen):
+        """Crea un grupo de nuevos socios con nombres y perfiles aleatorios."""
         lote = []
-        prob_baja = self.config.datos["simulacion"]["probabilidad_baja_historica"]
-
         for i in range(cantidad):
             nuevo_id = id_inicial + i
             es_mujer = random.random() < 0.5
             genero = "Femenino" if es_mujer else "Masculino"
-            nombre = f"{random.choice(self.nombres_m if es_mujer else self.nombres_h)} {random.choice(self.apellidos)}-{nuevo_id}"
 
-            # Lógica de baja histórica
-            es_baja = (mes_origen == "Carga_Inicial" and random.random() < prob_baja)
-            activo = not es_baja
-            satisfaccion = random.randint(0, 19) if es_baja else 100
-            fecha_baja = "Pre-Simulacion" if es_baja else None
+            # Generación de nombre real
+            nombre_pila = random.choice(self.nombres_m if es_mujer else self.nombres_h)
+            apellido = random.choice(self.apellidos)
+            nombre_completo = f"{nombre_pila} {apellido}"
 
-            # --- NUEVO: Generar fecha de alta ---
-            fecha_alta = self._obtener_fecha_simulada(mes_origen)
-
-            # Selección de Subtipo y Plan
-            roll_tipo = random.random()
-            if roll_tipo < 0.70:
+            # Clasificación del socio
+            roll = random.random()
+            if roll < 0.65:
                 subtipo = "Estudiante"
-            elif roll_tipo < 0.90:
+            elif roll < 0.90:
                 subtipo = "Trabajador"
             else:
                 subtipo = "Egresado"
 
-            if subtipo == "Egresado":
-                plan = "Mensual"
-            else:
-                plan = "Anual" if random.random() < 0.4 else "Mensual"
+            plan = "Mensual" if subtipo == "Egresado" or random.random() < 0.6 else "Anual"
 
             socio = {
                 "id": nuevo_id,
-                "nombre": nombre,
+                "nombre": nombre_completo,
                 "genero": genero,
-                "tipo_usuario": "Socio",
                 "subtipo": subtipo,
                 "plan_pago": plan,
-                "mes_alta": mes_origen,  # Para lógica interna (antigüedad)
-                "fecha_alta": fecha_alta,  # Para visualización en JSON
-                "rutina": self.generar_rutina(genero),
-                "perfil": {"tipo": "Fuerza", "energia": 300, "prob_descanso": 0.2},
-                "satisfaccion_acumulada": satisfaccion,
-                "activo": activo,
+                "mes_alta": mes_origen,
+                "fecha_alta": f"{random.randint(1, 28)}-{self.mapa_meses.get(mes_origen, 9)}-2023",
+                "rutina": self._generar_rutina_por_genero(genero),
+                "perfil": self._generar_perfil_aleatorio(),
+                "satisfaccion_acumulada": 100,
+                "activo": True,
                 "faltas_consecutivas": 0,
-                "castigado_hasta_semana_absoluta": 0,
-                "fecha_baja": fecha_baja
+                "fecha_baja": None
             }
             lote.append(socio)
         return lote
 
-    def inicializar_db(self):
-        if os.path.exists(self.ruta_db): os.remove(self.ruta_db)
-        cantidad = self.config.datos["simulacion"].get("usuarios_totales_iniciales", 300)
+    def _generar_rutina_por_genero(self, genero):
+        opciones = ["Musculacion_Pierna", "Musculacion_Torso", "Cardio"]
+        pesos = [0.6, 0.2, 0.2] if genero == "Femenino" else [0.2, 0.6, 0.2]
+        return [{"tipo_maquina_deseada": random.choices(opciones, weights=pesos)[0],
+                 "tiempo_uso": random.randint(15, 35)} for _ in range(random.randint(4, 6))]
 
-        print(f"🆕 Generando BASE INICIAL: {cantidad} socios...")
-        socios = self.generar_lote(cantidad, 1, "Carga_Inicial")
+    def _generar_perfil_aleatorio(self):
+        tipos = ["Fuerza", "Cardio", "Mix"]
+        return {"tipo": random.choice(tipos), "energia": random.randint(150, 350),
+                "prob_descanso": random.uniform(0.1, 0.4)}
 
-        with open(self.ruta_db, "w", encoding="utf-8") as f:
-            json.dump(socios, f, indent=4, ensure_ascii=False)
-        return socios
-
-    def inyectar_nuevos(self, socios_actuales, cantidad, mes):
-        if cantidad <= 0: return socios_actuales
-
-        real = int(random.uniform(0.8, 1.2) * cantidad)
-        last_id = socios_actuales[-1]["id"]
-
-        print(f"✨ ALTAS {mes.upper()}: +{real} socios.")
-        nuevos = self.generar_lote(real, last_id + 1, mes)
-
+    def inyectar_nuevos(self, socios_actuales, cantidad_aprox, mes):
+        """Añade nuevos socios a la base de datos (Picos de Septiembre/Enero)."""
+        if cantidad_aprox <= 0: return socios_actuales
+        cantidad_real = int(random.uniform(0.9, 1.1) * cantidad_aprox)
+        last_id = socios_actuales[-1]["id"] if socios_actuales else 100
+        nuevos = self.generar_lote(cantidad_real, last_id + 1, mes)
         socios_actuales.extend(nuevos)
-
-        with open(self.ruta_db, "w", encoding="utf-8") as f:
-            json.dump(socios_actuales, f, indent=4, ensure_ascii=False)
-
+        self._guardar_db(socios_actuales)
         return socios_actuales
 
-    def convertir_pase_diario(self, usuario_obj, nuevo_plan, fecha_alta):
-        """Convierte un usuario de Pase Diario en Socio registrado."""
-        # Cargamos DB actual
-        if os.path.exists(self.ruta_db):
-            with open(self.ruta_db, "r", encoding="utf-8") as f:
-                db = json.load(f)
-        else:
-            db = []
+    def inicializar_db(self):
+        """Genera la población inicial del gimnasio."""
+        iniciales = self.config.datos["simulacion"].get("usuarios_totales_iniciales", 300)
+        socios = self.generar_lote(iniciales, 100, "Septiembre")
+        self._guardar_db(socios)
+        return socios
 
-        nuevo_id = db[-1]["id"] + 1 if db else 1000
-
-        nuevo_socio = {
-            "id": nuevo_id,
-            "nombre": usuario_obj.nombre,  # Mantenemos nombre (o generamos uno real si era dummy)
-            "genero": "Desconocido", # Simplificación
-            "tipo_usuario": "Socio",
-            "subtipo": "Estudiante", # Asumimos estudiante por defecto al convertir, o aleatorio
-            "plan_pago": nuevo_plan,
-            "mes_alta": "Conversion_PaseDiario",
-            "fecha_alta": fecha_alta.strftime("%d-%m-%Y") if hasattr(fecha_alta, 'strftime') else str(fecha_alta),
-            "rutina": usuario_obj.rutina,
-            "perfil": {"tipo": "Fuerza", "energia": usuario_obj.perfil.energia, "prob_descanso": usuario_obj.perfil.prob_descanso},
-            "satisfaccion_acumulada": usuario_obj.satisfaccion,
-            "activo": True,
-            "faltas_consecutivas": 0,
-            "castigado_hasta_semana_absoluta": 0,
-            "fecha_baja": None
-        }
-        
-        # Asignar un subtipo aleatorio para la conversión
-        roll = random.random()
-        if roll < 0.7: nuevo_socio["subtipo"] = "Estudiante"
-        elif roll < 0.9: nuevo_socio["subtipo"] = "Trabajador"
-        else: nuevo_socio["subtipo"] = "Egresado"
-        
-        # Si es egresado, forzar mensual aunque la logica dijo anual (casos bordes)
-        if nuevo_socio["subtipo"] == "Egresado": nuevo_socio["plan_pago"] = "Mensual"
-
-        db.append(nuevo_socio)
-        
+    def _guardar_db(self, lista_socios):
         with open(self.ruta_db, "w", encoding="utf-8") as f:
-            json.dump(db, f, indent=4, ensure_ascii=False)
-            
-        return nuevo_socio
+            json.dump(lista_socios, f, indent=4, ensure_ascii=False)

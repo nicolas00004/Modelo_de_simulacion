@@ -59,8 +59,8 @@ class Config:
                     "usuarios_totales_iniciales": 300
                 },
                 "satisfaccion": {
-                    "umbral_baja_novato": 40,
-                    "umbral_baja_medio": 25,
+                    "umbral_baja_novato": 20,
+                    "umbral_baja_medio": 15,
                     "umbral_baja_veterano": 10,
                     "penalizacion_espera_cola": 0.5
                 },

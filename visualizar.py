@@ -2,106 +2,124 @@ import json
 import matplotlib.pyplot as plt
 import os
 import glob
+import warnings
+from collections import Counter
+
+# Silenciar avisos de fuentes para evitar el molesto mensaje del Glyph
+warnings.filterwarnings("ignore", category=UserWarning, module="matplotlib")
 
 
-def obtener_ultima_carpeta_logs(base_nombre="logs_anuales"):
-    """Busca la carpeta logs_anuales con el número más alto."""
-    carpetas = glob.glob(f"{base_nombre}*")
-    if not carpetas:
-        return None
-
-    def extraer_numero(nombre):
-        partes = nombre.split("_")
-        if len(partes) > 2 and partes[2].isdigit():
-            return int(partes[2])
-        return 0
-
-    carpetas_ordenadas = sorted(carpetas, key=extraer_numero, reverse=True)
-    return carpetas_ordenadas[0]
+def obtener_ultima_carpeta_logs(base_nombre="Simulacion"):
+    """Localiza la carpeta de resultados más reciente."""
+    carpetas = glob.glob(f"{base_nombre}*") + glob.glob("logs_anuales*")
+    if not carpetas: return None
+    return max(carpetas, key=os.path.getmtime)
 
 
-def cargar_datos():
-    carpeta = obtener_ultima_carpeta_logs()
-    if not carpeta:
-        print("❌ No se encontraron carpetas de logs.")
-        return None
-
-    archivo_json = os.path.join(carpeta, "Reporte_ANUAL_FINAL.json")
-
-    if not os.path.exists(archivo_json):
-        print(f"❌ No se encontró el reporte en {carpeta}")
-        return None
-
-    print(f"📂 Cargando datos de: {archivo_json}")
-    with open(archivo_json, 'r', encoding='utf-8') as f:
+def cargar_json(ruta):
+    if not os.path.exists(ruta): return None
+    with open(ruta, 'r', encoding='utf-8') as f:
         return json.load(f)
 
 
-def generar_dashboard(datos):
-    mensual = datos["mensual"]
+def generar_dashboard_maestro():
+    # 1. CARGA DE ARCHIVOS
+    carpeta = obtener_ultima_carpeta_logs()
+    if not carpeta:
+        print("Error: No se detectan carpetas de simulacion.")
+        return
 
-    # Ejes X (Meses)
-    meses = [m["mes"][:3] for m in mensual]
+    reporte_anual = cargar_json(os.path.join(carpeta, "Reporte_ANUAL_FINAL.json"))
+    db_clientes = cargar_json("datos_clientes.json")
 
-    # --- EXTRACCIÓN SEGURA DE DATOS (Evita errores si cambian los nombres) ---
-    # Intenta buscar la clave nueva, si no existe, busca la vieja, si no, pone 0.
+    if not reporte_anual or not db_clientes:
+        print("Error: Faltan archivos criticos para el analisis (JSON).")
+        return
 
-    visitas = [m.get("visitas", m.get("visitas_totales", 0)) for m in mensual]
-    bajas = [m.get("bajas", m.get("bajas_totales", 0)) for m in mensual]
+    # 2. PROCESAMIENTO DE DATOS (Simulacion)
+    mensual = reporte_anual.get("historico_detallado", reporte_anual.get("detalle_mensual", []))
+    meses = [m.get("mes", "S/N")[:3] for m in mensual]
 
-    # Aquí es donde te daba el error: buscamos 'sat_promedio', 'sat' o 'satisfaccion'
-    satisfaccion = [m.get("sat_promedio", m.get("sat", m.get("satisfaccion", 0))) for m in mensual]
+    asistentes = [m.get("asistentes", 0) for m in mensual]
+    bajas = [m.get("bajas", 0) for m in mensual]
+    satisfaccion = [m.get("satisfaccion", 0) for m in mensual]
+    ingresos = [m.get("ingresos_mes", 0) for m in mensual]
+    gastos = [m.get("gastos_mes", 0) for m in mensual]
+    beneficio = [m.get("beneficio_neto", 0) for m in mensual]
+    activos_evolucion = [m.get("socios_activos", 0) for m in mensual]
 
-    # Buscamos 'socios_activos_fin_mes' o 'socios'
-    socios = [m.get("socios_activos_fin_mes", m.get("socios", 0)) for m in mensual]
+    # 3. PROCESAMIENTO DE CLIENTES (Demografia y Rutinas)
+    tipos_socio = Counter([c["subtipo"] for c in db_clientes])
+    planes = Counter([c["plan_pago"] for c in db_clientes])
 
-    # --- CONFIGURACIÓN GRÁFICA ---
-    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 15))
-    plt.subplots_adjust(hspace=0.4)
+    demandas_maq = []
+    for c in db_clientes:
+        for paso in c.get("rutina", []):
+            demandas_maq.append(paso["tipo_maquina_deseada"])
+    top_maquinas = Counter(demandas_maq)
 
-    # 1. Afluencia vs Bajas
-    ax1.set_title("Afluencia vs. Deserción Mensual")
-    ax1.bar(meses, visitas, color='#4a90e2', alpha=0.7, label='Visitas')
-    ax1.set_ylabel("Total Visitas", color='#4a90e2', fontweight='bold')
+    # --- CONFIGURACION VISUAL (Grid 4x2) ---
+    # Hemos eliminado los emojis de los titulos para evitar el error de Glyph
+    fig = plt.figure(figsize=(18, 16))
+    plt.subplots_adjust(hspace=0.6, wspace=0.3)
+    fig.suptitle(f"PANEL DE CONTROL INTEGRAL: {carpeta}", fontsize=20, fontweight='bold')
 
+    # GRAFICO 1: Operaciones (Asistencia vs Bajas)
+    ax1 = plt.subplot(4, 2, 1)
+    ax1.bar(meses, asistentes, color='#3498db', alpha=0.5, label='Asistentes')
     ax1_b = ax1.twinx()
-    ax1_b.plot(meses, bajas, color='#e74c3c', marker='o', linewidth=2, label='Bajas')
-    ax1_b.set_ylabel("Total Bajas", color='#e74c3c', fontweight='bold')
+    ax1_b.plot(meses, bajas, color='#e74c3c', marker='o', label='Bajas')
+    ax1.set_title("Afluencia vs. Desercion", fontweight='bold')
+    ax1.legend(loc='upper left')
 
-    for i, v in enumerate(bajas):
-        ax1_b.text(i, v + 1, str(v), color='#e74c3c', fontweight='bold', ha='center')
+    # GRAFICO 2: Calidad (Satisfaccion)
+    ax2 = plt.subplot(4, 2, 2)
+    ax2.plot(meses, satisfaccion, color='#f1c40f', marker='s', linewidth=2)
+    ax2.fill_between(meses, satisfaccion, color='#f1c40f', alpha=0.1)
+    ax2.axhline(25, color='red', linestyle='--', alpha=0.3)
+    ax2.set_title("Satisfaccion Media (0-100)", fontweight='bold')
+    ax2.set_ylim(0, 105)
 
-    # 2. Satisfacción
-    ax2.set_title("Calidad del Servicio (Satisfacción Media)")
-    ax2.plot(meses, satisfaccion, color='#2ecc71', marker='s', linewidth=2)
-    ax2.set_ylim(0, 100)
-    ax2.axhline(y=50, color='gray', linestyle='--', alpha=0.5, label='Aprobado')
-    ax2.axhline(y=80, color='gold', linestyle='--', alpha=0.5, label='Excelencia')
-    ax2.fill_between(meses, 0, 40, color='#e74c3c', alpha=0.1, label='Zona Crítica')
-    ax2.set_ylabel("Puntos (0-100)")
-    ax2.legend(loc="upper right")
+    # GRAFICO 3: Economia (Ingresos vs Gastos)
+    ax3 = plt.subplot(4, 2, 3)
+    x = range(len(meses))
+    ax3.bar(x, ingresos, width=0.4, label='Ingresos', color='#2ecc71', align='center')
+    ax3.bar(x, gastos, width=0.4, label='Gastos', color='#e67e22', align='edge')
+    ax3.set_xticks(x)
+    ax3.set_xticklabels(meses)
+    ax3.set_title("Balance Economico (Euro)", fontweight='bold')
+    ax3.legend()
 
-    for i, v in enumerate(satisfaccion):
-        ax2.text(i, v + 2, f"{v:.1f}", ha='center', fontsize=9)
+    # GRAFICO 4: Rentabilidad (Beneficio Neto)
+    ax4 = plt.subplot(4, 2, 4)
+    colores_ben = ['#2ecc71' if b > 0 else '#e74c3c' for b in beneficio]
+    ax4.bar(meses, beneficio, color=colores_ben)
+    ax4.axhline(0, color='black', linewidth=1)
+    ax4.set_title("Beneficio Neto Mensual", fontweight='bold')
 
-    # 3. Socios Activos
-    ax3.set_title("Evolución de la Cartera de Clientes")
-    ax3.fill_between(meses, socios, color='#9b59b6', alpha=0.4)
-    ax3.plot(meses, socios, color='#8e44ad', marker='o')
-    ax3.set_ylabel("Socios Activos")
+    # GRAFICO 5: Clientes (Segmentacion)
+    ax5 = plt.subplot(4, 2, 5)
+    ax5.pie(tipos_socio.values(), labels=tipos_socio.keys(), autopct='%1.1f%%', startangle=140)
+    ax5.set_title("Segmentacion por Perfil", fontweight='bold')
 
-    for i, v in enumerate(socios):
-        ax3.text(i, v, str(v), ha='center', va='bottom', fontweight='bold')
+    # GRAFICO 6: Fidelizacion (Planes)
+    ax6 = plt.subplot(4, 2, 6)
+    ax6.pie(planes.values(), labels=planes.keys(), autopct='%1.1f%%', colors=['#1abc9c', '#34495e'])
+    ax6.set_title("Mix de Planes (Anual vs Mensual)", fontweight='bold')
 
-    print("📊 Generando gráficos...")
+    # GRAFICO 7: Cartera Activa (Evolucion Socios)
+    ax7 = plt.subplot(4, 2, 7)
+    ax7.plot(meses, activos_evolucion, color='#8e44ad', marker='D', linestyle=':')
+    ax7.set_title("Total Socios Activos", fontweight='bold')
+
+    # GRAFICO 8: Demanda (Maquinas mas pedidas)
+    ax8 = plt.subplot(4, 2, 8)
+    ax8.barh(list(top_maquinas.keys()), list(top_maquinas.values()), color='#1abc9c')
+    ax8.set_title("Demanda por Tipo de Maquina", fontweight='bold')
+
+    print("Dashboard generado correctamente.")
     plt.show()
 
 
 if __name__ == "__main__":
-    datos = cargar_datos()
-    if datos:
-        try:
-            generar_dashboard(datos)
-        except Exception as e:
-            print(f"❌ Error generando gráficos: {e}")
-            print("💡 Borra la carpeta logs_anuales y ejecuta main.py de nuevo para regenerar datos limpios.")
+    generar_dashboard_maestro()

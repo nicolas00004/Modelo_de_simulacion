@@ -2,7 +2,9 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=python
 
 logs_*/
+Simulacion*/
 datos_clientes.json
+.idea/
 
 ### Python ###
 # Byte-compiled / optimized / DLL files

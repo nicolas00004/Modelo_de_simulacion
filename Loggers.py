@@ -1,29 +1,36 @@
 import os
 import csv
 import json
-import random  # Necesario para la probabilidad de segunda oportunidad
 from datetime import datetime
-from collections import Counter
+import random
 
 
 class Logs:
     def __init__(self, ruta_completa_sin_ext):
         carpeta = os.path.dirname(ruta_completa_sin_ext)
-        if not os.path.exists(carpeta): os.makedirs(carpeta)
+        if not os.path.exists(carpeta):
+            os.makedirs(carpeta)
+
         self.archivo_txt = f"{ruta_completa_sin_ext}.txt"
         self.archivo_csv = f"{ruta_completa_sin_ext}.csv"
+
         with open(self.archivo_txt, "w", encoding="utf-8") as f:
-            f.write(f"--- Inicio: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n")
-        self.fieldnames = ["tiempo_simulacion", "tipo_evento", "id_usuario", "nombre", "dia", "sesion",
-                           "satisfaccion_actual", "satisfaccion_inicio", "maquina", "duracion", "cola_tamano",
-                           "extra_info"]
+            f.write(f"--- Sesión Iniciada: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n")
+
+        self.fieldnames = [
+            "tiempo_simulacion", "tipo_evento", "id_usuario", "nombre",
+            "dia", "sesion", "satisfaccion_actual",
+            "balance_economico", "maquinas_rotas_count",
+            "maquina", "duracion", "extra_info"
+        ]
         with open(self.archivo_csv, mode='w', newline='', encoding='utf-8') as f:
             writer = csv.DictWriter(f, fieldnames=self.fieldnames)
             writer.writeheader()
 
-    def log(self, mensaje, nivel="INFO"):
+    def log(self, mensaje):
+        """Escribe el mensaje directamente, sin metadatos INFO."""
         with open(self.archivo_txt, "a", encoding="utf-8") as f:
-            f.write(f"[{datetime.now().strftime('%H:%M:%S')}] [{nivel}] {mensaje}\n")
+            f.write(f"{mensaje}\n")
 
     def registrar_datos(self, datos):
         try:
@@ -34,169 +41,115 @@ class Logs:
         except:
             pass
 
-    def cerrar_con_resumen(self, reservados, asistentes):
-        with open(self.archivo_txt, "a", encoding="utf-8") as f:
-            f.write(f"\n--- RESUMEN ---\nReservas: {reservados} | Asistentes: {asistentes}\n")
-
 
 class AdministradorDeLogs:
     def __init__(self, carpeta_semana):
         self.logger_actual = None
         self.carpeta_semana = carpeta_semana
-        self.contador_asistentes = 0
+        self.asistentes_reales = 0
 
     def cambiar_sesion(self, nombre_dia, numero_sesion):
-        # MODO LIMPIO (Si quieres logs detallados descomenta la linea de abajo)
-        # self.logger_actual = Logs(f"{self.carpeta_semana}/{nombre_dia}/Sesion_{numero_sesion}")
-        self.logger_actual = None
-        self.contador_asistentes = 0
+        ruta_base = f"{self.carpeta_semana}/{nombre_dia}/Sesion_{numero_sesion}"
+        self.logger_actual = Logs(ruta_base)
+        self.asistentes_reales = 0
+
+    def finalizar_sesion(self):
+        if self.logger_actual:
+            self.logger_actual.log(f"Fin de sesión. Asistentes: {self.asistentes_reales}")
 
     def registrar_entrada_usuario(self):
-        self.contador_asistentes += 1
+        self.asistentes_reales += 1
 
-    def finalizar_sesion_actual(self, total_reservados):
-        if self.logger_actual: self.logger_actual.cerrar_con_resumen(total_reservados, self.contador_asistentes)
-
-    def log(self, mensaje, nivel="INFO"):
-        if self.logger_actual: self.logger_actual.log(mensaje, nivel)
+    def log(self, mensaje):
+        if self.logger_actual: self.logger_actual.log(mensaje)
 
     def registrar_datos(self, datos):
         if self.logger_actual: self.logger_actual.registrar_datos(datos)
 
 
-# --- LÓGICA DE REPORTES ---
 class GeneradorReportes:
     @staticmethod
     def generar_conclusiones_semanales(lista_visitas, ids_no_shows, carpeta_destino, mes, semana_relativa,
-                                       semana_absoluta, socios_db, config, nuevas_altas):
-        ruta_json = f"{carpeta_destino}/Reporte_INTEGRAL_{mes}_S{semana_relativa}.json"
-        ruta_txt = f"{carpeta_destino}/Resumen_Ejecutivo_{mes}_S{semana_relativa}.txt"
+                                       semana_absoluta, socios_db, config, nuevas_altas, gym_obj):
+        """Procesa satisfacción, ejecuta bajas y guarda reporte JSON."""
 
-        ultima_satisfaccion_map = {u.id: u.satisfaccion for u in lista_visitas}
+        # 1. Actualizar satisfacción en la base de datos de los que asistieron
+        visitas_map = {u.id: u.satisfaccion for u in lista_visitas}
 
-        bajas = 0
-        lista_bajas = []
-        castigados_nuevos = 0
-        perdonados = 0
+        bajas_esta_semana = 0
+        bajas_detalle = {"Novato": 0, "Medio": 0, "Veterano": 0}
 
-        idx_mes_actual = config.INDICE_MESES.get(mes, 0)
-        SAT_CONFIG = config.datos["satisfaccion"]
-        prob_perdon = config.datos["simulacion"].get("probabilidad_reconsiderar_baja", 0.0)
+        SAT_CFG = config.datos["satisfaccion"]
+        prob_perdon = config.datos["simulacion"].get("probabilidad_reconsiderar_baja", 0.3)
 
-        conteo_no_shows = Counter(ids_no_shows)
-
+        # 2. Evaluar a todos los socios activos para ver quién se da de baja
         for socio in socios_db:
-            sid = socio["id"]
+            if not socio.get("activo", True): continue
 
-            # 1. ACTUALIZAR SATISFACCIÓN
-            if sid in ultima_satisfaccion_map:
-                socio["satisfaccion_acumulada"] = ultima_satisfaccion_map[sid]
-                socio["faltas_consecutivas"] = 0
+            # Si vino esta semana, actualizamos su humor acumulado
+            if socio["id"] in visitas_map:
+                socio["satisfaccion_acumulada"] = visitas_map[socio["id"]]
 
-            # 2. GESTIONAR FALTAS
-            faltas_esta_semana = conteo_no_shows.get(sid, 0)
-            if faltas_esta_semana > 0:
-                socio["faltas_consecutivas"] += faltas_esta_semana
+            # Lógica de antigüedad para el umbral de baja
+            idx_actual = config.INDICE_MESES.get(mes, 0)
+            idx_alta = config.INDICE_MESES.get(socio.get("mes_alta", mes), 0)
+            antiguedad = max(0, idx_actual - idx_alta)
 
-            # 3. APLICAR CASTIGO
-            if socio["faltas_consecutivas"] >= 3 and socio.get("castigado_hasta_semana_absoluta", 0) <= semana_absoluta:
-                socio["faltas_consecutivas"] = 0
-                socio["castigado_hasta_semana_absoluta"] = semana_absoluta + 2
-                castigados_nuevos += 1
+            if antiguedad <= 1:
+                tipo, umbral = "Novato", SAT_CFG["umbral_baja_novato"]
+            elif antiguedad <= 4:
+                tipo, umbral = "Medio", SAT_CFG["umbral_baja_medio"]
+            else:
+                tipo, umbral = "Veterano", SAT_CFG["umbral_baja_veterano"]
 
-            # 4. GESTIÓN DE BAJAS Y SEGUNDA OPORTUNIDAD
-            if socio.get("activo", True):
-                mes_alta = socio.get("mes_alta", "Carga_Inicial")
-                idx_alta = config.INDICE_MESES.get(mes_alta, -1)
-                antiguedad = idx_mes_actual - idx_alta
+            # Decisión de Baja
+            if socio["satisfaccion_acumulada"] < umbral:
+                if random.random() > prob_perdon:
+                    socio["activo"] = False
+                    socio["fecha_baja"] = f"{mes} - S{semana_relativa}"
+                    bajas_esta_semana += 1
+                    bajas_detalle[tipo] += 1
 
-                if antiguedad <= 1:
-                    umbral = SAT_CONFIG["umbral_baja_novato"]
-                elif antiguedad <= 4:
-                    umbral = SAT_CONFIG["umbral_baja_medio"]
-                else:
-                    umbral = SAT_CONFIG["umbral_baja_veterano"]
+        # 3. Contar distribución por tipo para el gráfico de tarta
+        activos_lista = [s for s in socios_db if s.get("activo", True)]
+        conteo_tipos = {"Estudiante": 0, "Trabajador": 0, "Egresado": 0}
+        for s in activos_lista:
+            t = s.get("subtipo", "Estudiante")
+            if t in conteo_tipos: conteo_tipos[t] += 1
 
-                if socio["satisfaccion_acumulada"] < umbral:
-                    # --- AQUÍ ESTÁ EL CAMBIO: Segunda Oportunidad ---
-                    if random.random() < prob_perdon:
-                        # SE SALVA
-                        perdonados += 1
-                        socio[
-                            "satisfaccion_acumulada"] = 55  # Le subimos un poco el ánimo para que no caiga la semana que viene
-                        print(
-                            f"      😅 {socio['nombre']} pensó en irse (Sat {socio['satisfaccion_acumulada']}), pero le dará otra oportunidad.")
-                    else:
-                        # SE VA DEFINITIVAMENTE
-                        socio["activo"] = False
-                        socio["fecha_baja"] = f"{mes} - S{semana_relativa}"
-                        bajas += 1
-                        lista_bajas.append({"id": sid, "motivo": f"Sat < {umbral}"})
-                        print(
-                            f"      ❌ BAJA: {socio['nombre']} (Sat: {socio['satisfaccion_acumulada']}) - Antigüedad: {antiguedad} m")
-
-        with open(config.datos["rutas"]["archivo_clientes"], "w", encoding="utf-8") as f:
-            json.dump(socios_db, f, indent=4, ensure_ascii=False)
-
-        promedio = sum(ultima_satisfaccion_map.values()) / len(
-            ultima_satisfaccion_map) if ultima_satisfaccion_map else 0
-        socios_activos = len([s for s in socios_db if s.get("activo", True)])
-
-        informe = {
-            "periodo": f"{mes} - S{semana_relativa}",
-            "kpis": {
-                "visitas": len(lista_visitas),
-                "sat_media": round(promedio, 2),
-                "bajas": bajas,
-                "perdonados_segunda_oportunidad": perdonados,
-                "socios_activos": socios_activos,
-                "nuevas_altas": nuevas_altas,
-                "nuevos_castigados": castigados_nuevos
-            },
-            "bajas_detalle": lista_bajas
+        # 4. Crear y Guardar el JSON Integral
+        reporte_semanal = {
+            "mes": mes,
+            "semana": semana_relativa,
+            "asistentes": len(lista_visitas),
+            "bajas": bajas_esta_semana,
+            "satisfaccion": round(sum(u.satisfaccion for u in lista_visitas) / len(lista_visitas),
+                                  2) if lista_visitas else 0,
+            "socios_activos": len(activos_lista),
+            "ingresos_mes": round(gym_obj.balance, 2),
+            "gastos_mes": round(gym_obj.costes_reparacion_acumulados, 2),
+            "distribucion_socios": conteo_tipos
         }
+
+        ruta_json = f"{carpeta_destino}/Reporte_INTEGRAL_{mes}_S{semana_relativa}.json"
         with open(ruta_json, "w", encoding="utf-8") as f:
-            json.dump(informe, f, indent=4)
+            json.dump(reporte_semanal, f, indent=4)
 
-        with open(ruta_txt, "w", encoding="utf-8") as f:
-            f.write(f"=== {mes.upper()} S{semana_relativa} ===\n")
-            f.write(f"Visitas: {len(lista_visitas)}\nSat Media: {promedio:.2f}\n")
-            f.write(f"Bajas: {bajas}\nSalvados in extremis: {perdonados}\n")
+        # 5. Notificar por consola
+        if bajas_esta_semana > 0:
+            print(
+                f"      📉 BAJAS: -{bajas_esta_semana} socios ({bajas_detalle['Novato']} Nov, {bajas_detalle['Medio']} Med, {bajas_detalle['Veterano']} Vet)")
 
-        return {"mes": mes, "visitas": len(lista_visitas), "bajas": bajas, "altas": nuevas_altas,
-                "satisfaccion": promedio, "socios_activos": socios_activos}
+        return reporte_semanal
 
     @staticmethod
     def generar_informe_anual(historico, carpeta_raiz):
-        ruta_anual = f"{carpeta_raiz}/Reporte_ANUAL_FINAL.json"
-        total_visitas = sum(h["visitas"] for h in historico)
-        total_bajas = sum(h["bajas"] for h in historico)
-        total_altas = sum(h["altas"] for h in historico)
-
-        desglose = {}
-        for h in historico:
-            mes = h["mes"]
-            if mes not in desglose: desglose[mes] = {"visitas": 0, "bajas": 0, "altas": 0, "suma_sat": 0, "count": 0,
-                                                     "socios": 0}
-            d = desglose[mes]
-            d["visitas"] += h["visitas"];
-            d["bajas"] += h["bajas"];
-            d["altas"] += h["altas"]
-            d["suma_sat"] += h["satisfaccion"];
-            d["count"] += 1;
-            d["socios"] = h["socios_activos"]
-
-        final = []
-        print(
-            "\n" + "=" * 65 + "\n📊 RESUMEN ANUAL\n" + "=" * 65 + "\nMES | VISITAS | ALTAS | BAJAS | SAT | SOCIOS\n" + "-" * 70)
-        for m, d in desglose.items():
-            avg = d["suma_sat"] / d["count"] if d["count"] else 0
-            final.append(
-                {"mes": m, "visitas": d["visitas"], "altas": d["altas"], "bajas": d["bajas"], "sat": round(avg, 2),
-                 "socios": d["socios"]})
-            print(f"{m:<10} | {d['visitas']:<7} | {d['altas']:<5} | {d['bajas']:<5} | {avg:.2f} | {d['socios']}")
-
-        with open(ruta_anual, "w", encoding="utf-8") as f:
-            json.dump(
-                {"global": {"visitas": total_visitas, "bajas": total_bajas, "altas": total_altas}, "mensual": final}, f,
-                indent=4)
+        resumen = {
+            "total_visitas": sum(h["asistentes"] for h in historico),
+            "total_bajas": sum(h["bajas"] for h in historico),
+            "historico_detallado": historico
+        }
+        ruta_final = f"{carpeta_raiz}/Reporte_ANUAL_FINAL.json"
+        with open(ruta_final, "w", encoding="utf-8") as f:
+            json.dump(resumen, f, indent=4)
+        print(f"\n✅ Informe anual consolidado en: {ruta_final}")
