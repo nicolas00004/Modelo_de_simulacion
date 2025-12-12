@@ -1,12 +1,13 @@
 import random  # 1. Importamos la librería necesaria
 
 class Monitor:
-    def __init__(self, nombre, id, especialidad):
+    def __init__(self, nombre, id, especialidad, env=None, **kwargs):
         # NOTA: Los argumentos coinciden con el JSON:
         # {"nombre": "Carlos", "id": "M01", "especialidad": "Musculacion"}
         self.nombre = nombre
         self.id = id
         self.especialidad = especialidad
+        self.env = env # Guardamos el environment si se pasa
 
         # Inicializamos la cola vacía internamente (no viene del JSON)
         self.cola = []

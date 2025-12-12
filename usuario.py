@@ -135,7 +135,7 @@ class Usuario:
 
                         # Si la máquina explota
                         self._actualizar_satisfaccion(-pen_rota)
-                        self.gimnasio.registrar_reparacion()  # Descuenta dinero del gym
+                        # El coste se registra internamente en maquina.proceso_reparacion()
                         self._notificar(f"¡{maquina.nombre} SE ROMPIÓ!", "💥", "MAQUINA_ROTA")
                         continue
 
