@@ -224,36 +224,80 @@
   ],
   "accesorios": [
     {
+      "nombre": "Mancuernas 2kg",
+      "cantidad": 2
+    },
+    {
+      "nombre": "Mancuernas 3kg",
+      "cantidad": 2
+    },
+    {
+      "nombre": "Mancuernas 4kg",
+      "cantidad": 2
+    },
+    {
       "nombre": "Mancuernas 5kg",
-      "cantidad": 30
+      "cantidad": 2
+    },
+    {
+      "nombre": "Mancuernas 6kg",
+      "cantidad": 2
+    },
+    {
+      "nombre": "Mancuernas 8kg",
+      "cantidad": 4
     },
     {
       "nombre": "Mancuernas 10kg",
-      "cantidad": 30
+      "cantidad": 4
     },
     {
-      "nombre": "Mancuernas 15kg",
-      "cantidad": 20
+      "nombre": "Mancuernas 12kg",
+      "cantidad": 4
     },
     {
-      "nombre": "Mancuernas 25kg+",
-      "cantidad": 15
+      "nombre": "Mancuernas 14kg",
+      "cantidad": 2
+    },
+    {
+      "nombre": "Mancuernas 16kg",
+      "cantidad": 2
+    },
+    {
+      "nombre": "Mancuernas 18kg",
+      "cantidad": 2
+    },
+    {
+      "nombre": "Mancuernas 20kg",
+      "cantidad": 2
+    },
+    {
+      "nombre": "Mancuernas 22.5kg",
+      "cantidad": 2
+    },
+    {
+      "nombre": "Mancuernas 25kg",
+      "cantidad": 2
+    },
+    {
+      "nombre": "Mancuernas 27.5kg",
+      "cantidad": 2
+    },
+    {
+      "nombre": "Mancuernas 30kg",
+      "cantidad": 2
     },
     {
       "nombre": "Esterillas",
-      "cantidad": 60
+      "cantidad": 4
     },
     {
       "nombre": "Bandas Elásticas",
-      "cantidad": 40
-    },
-    {
-      "nombre": "Kettlebells 12kg",
-      "cantidad": 15
+      "cantidad": 4
     },
     {
       "nombre": "Balones Medicinales",
-      "cantidad": 12
+      "cantidad": 2
     },
     {
       "nombre": "Barras Olímpicas",
