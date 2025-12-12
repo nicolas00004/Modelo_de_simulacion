@@ -53,7 +53,7 @@ class Maquina:
         self.disponibilidad = False
         print(f"[{self.env.now:6.2f}] 💥 CRASH: {self.nombre} se ha roto durante el uso!")
 
-        # 1. Expulsar a todos los usuarios de la cola de espera
+        # Expulsar a todos los usuarios de la cola de espera
         # Hacemos copia de la lista porque al interrumpirlos se eliminarán ellos mismos de la lista
         usuarios_a_expulsar = list(self.usuarios_esperando)
         for usuario in usuarios_a_expulsar:
@@ -65,7 +65,7 @@ class Maquina:
         
         # Nota: Los usuarios que la estén USANDO recibirán la excepción MachineBrokenError en su proceso 'hacer'
 
-        # 2. Iniciar reparación
+        # Iniciar reparación
         self.env.process(self.proceso_reparacion())
 
     def proceso_reparacion(self):

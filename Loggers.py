@@ -73,7 +73,7 @@ class GeneradorReportes:
                                        semana_absoluta, socios_db, config, nuevas_altas, gym_obj):
         """Procesa satisfacción, ejecuta bajas y guarda reporte JSON."""
 
-        # 1. Actualizar satisfacción en la base de datos de los que asistieron
+        # Actualizar satisfacción en la base de datos de los que asistieron
         visitas_map = {u.id: u.satisfaccion for u in lista_visitas}
 
         bajas_esta_semana = 0
@@ -82,7 +82,7 @@ class GeneradorReportes:
         SAT_CFG = config.datos["satisfaccion"]
         prob_perdon = config.datos["simulacion"].get("probabilidad_reconsiderar_baja", 0.3)
 
-        # 2. Evaluar a todos los socios activos para ver quién se da de baja
+        # Evaluar a todos los socios activos para ver quién se da de baja
         for socio in socios_db:
             if not socio.get("activo", True): continue
 
@@ -110,14 +110,14 @@ class GeneradorReportes:
                     bajas_esta_semana += 1
                     bajas_detalle[tipo] += 1
 
-        # 3. Contar distribución por tipo para el gráfico de tarta
+        # Contar distribución por tipo para el gráfico de tarta
         activos_lista = [s for s in socios_db if s.get("activo", True)]
         conteo_tipos = {"Estudiante": 0, "Trabajador": 0, "Egresado": 0}
         for s in activos_lista:
             t = s.get("subtipo", "Estudiante")
             if t in conteo_tipos: conteo_tipos[t] += 1
 
-        # 4. Crear y Guardar el JSON Integral
+        # Crear y Guardar el JSON Integral
         reporte_semanal = {
             "mes": mes,
             "semana": semana_relativa,
@@ -135,7 +135,7 @@ class GeneradorReportes:
         with open(ruta_json, "w", encoding="utf-8") as f:
             json.dump(reporte_semanal, f, indent=4)
 
-        # 5. Notificar por consola
+        # Notificar por consola
         if bajas_esta_semana > 0:
             print(
                 f"      📉 BAJAS: -{bajas_esta_semana} socios ({bajas_detalle['Novato']} Nov, {bajas_detalle['Medio']} Med, {bajas_detalle['Veterano']} Vet)")

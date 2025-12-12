@@ -23,7 +23,6 @@ class Gimnasio:
 
         # --- ATRIBUTOS ECONÓMICOS ---
         self.balance = 25000  # Capital inicial
-        self.cuota_mensual = 50
         self.costes_reparacion_acumulados = 0
 
     # --- LÓGICA DE ESTADO ---
@@ -41,11 +40,10 @@ class Gimnasio:
 
     # --- LÓGICA ECONÓMICA ---
 
-    def cobrar_mensualidad(self, cantidad_socios_activos):
+    def registrar_ingresos(self, monto):
         """Inyecta ingresos al balance."""
-        ingresos = cantidad_socios_activos * self.cuota_mensual
-        self.balance += ingresos
-        return ingresos
+        self.balance += monto
+        return monto
 
     def registrar_reparacion(self, coste):
         """
@@ -104,6 +102,5 @@ class Gimnasio:
         print("🚪 Gimnasio abierto para la sesión.")
 
     def cerrar_gimnasio(self):
-        # Al cerrar, podríamos imprimir cuánto se gastó en reparaciones en esta sesión
         if self.costes_reparacion_acumulados > 0:
             print(f"🛠️ Gastos de mantenimiento en esta sesión: {self.costes_reparacion_acumulados} €")

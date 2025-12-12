@@ -46,14 +46,14 @@ class Usuario:
         # .ljust(20) asegura que la columna de nombres sea uniforme
         mensaje_limpio = f"{tiempo_sim} {emoji} {self.nombre.ljust(20)} {mensaje}"
 
-        # 1. Mostrar en la consola del IDE
+        # Mostrar en la consola del IDE
         print(mensaje_limpio)
 
-        # 2. Guardar en el archivo .txt (sin prefijos de hora real ni INFO)
+        # Guardar en el archivo .txt (sin prefijos de hora real ni INFO)
         if self.logger_sesion:
             self.logger_sesion.log(mensaje_limpio)
 
-        # 3. Registrar datos técnicos en el CSV
+        # Registrar datos técnicos en el CSV
         self._log_evento(mensaje, tipo_evento, datos_extra)
 
     def _log_evento(self, mensaje, tipo_evento, datos_extra=None):
@@ -93,7 +93,7 @@ class Usuario:
             yield from self._preparacion()
 
             for paso in self.rutina:
-                # 1. Comprobar tiempo personal
+                # Comprobar tiempo personal
                 if self.hora_fin > 0 and self.env.now >= self.hora_fin:
                     self._actualizar_satisfaccion(-pen_salida)
                     self._notificar("se va por falta de tiempo personal.", "⌛", "SALIDA_FORZADA")

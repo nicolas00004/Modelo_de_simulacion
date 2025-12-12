@@ -1,4 +1,4 @@
-import random  # 1. Importamos la librería necesaria
+import random
 
 class Monitor:
     def __init__(self, nombre, id, especialidad, env=None, **kwargs):
@@ -7,21 +7,17 @@ class Monitor:
         self.nombre = nombre
         self.id = id
         self.especialidad = especialidad
-        self.env = env # Guardamos el environment si se pasa
+        self.env = env
 
-        # Inicializamos la cola vacía internamente (no viene del JSON)
         self.cola = []
 
     def preguntar(self, usuario):
-        """
-        Método llamado por el Usuario.
-        """
         # Añadir a la cola
         self.cola.append(usuario)
         try:
             print(f"[{usuario.env.now:.2f}] 🗣️ {usuario.nombre} espera al monitor {self.nombre}...")
 
-            # 2. MODIFICACIÓN: Cálculo del tiempo con distribución triangular
+            # MODIFICACIÓN: Cálculo del tiempo con distribución triangular
             # random.triangular(minimo, maximo, moda)
             # - low (2): Nadie tarda menos de 2 minutos.
             # - high (10): Nadie tarda más de 10 minutos.

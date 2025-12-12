@@ -44,7 +44,7 @@ def main():
             tarifa = cfg.datos["precios"].get(s["subtipo"], cfg.datos["precios"]["Estudiante"])
             cuota = tarifa["Anual"] if (s["plan_pago"] == "Anual" and mes == "Septiembre") else tarifa["Mensual"]
             ingresos_cuotas += cuota
-        gym.balance += ingresos_cuotas
+        gym.registrar_ingresos(ingresos_cuotas)
 
         # 2. ALTAS CONCENTRADAS (Picos de Enero/Septiembre)
         len_antes = len(socios_db)
@@ -54,7 +54,7 @@ def main():
         for s in socios_db[len_antes:]:
             tarifa = cfg.datos["precios"].get(s["subtipo"], cfg.datos["precios"]["Estudiante"])
             cuota = tarifa["Anual"] if s["plan_pago"] == "Anual" else tarifa["Mensual"]
-            gym.balance += cuota
+            gym.registrar_ingresos(cuota)
             ingresos_cuotas += cuota
 
         print(f"   💰 Ingresos Cuotas: {ingresos_cuotas}€ | Altas: +{altas_mes}")

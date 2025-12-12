@@ -1,4 +1,3 @@
-import simpy
 import random
 from datetime import datetime, timedelta, time
 from usuario import Usuario

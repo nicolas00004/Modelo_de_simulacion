@@ -10,11 +10,9 @@ class Accesorios:
         self.disponibilidad = disponibilidad
         self.durabilidad = durabilidad
 
-        # Inicializamos la lista vacía aquí. No la pedimos al JSON.
         self.registro_usuario = []
 
     def sumar_usuario_registro(self, usuario):
-        # CORRECCIÓN: Se usa append para añadir al final
         self.registro_usuario.append(usuario)
 
     def usar(self):
