@@ -60,8 +60,15 @@ class MotorSimulacion:
                     precio_pase = self.config.datos["precios"].get("Pase_Diario", 10)
                     gimnasio.balance += precio_pase
 
+                    # Garantizar ID único para el día
+                    while True:
+                        new_id = random.randint(9000, 9999)
+                        if new_id not in reservados_hoy:
+                            reservados_hoy.add(new_id)
+                            break
+                    
                     u_pase = Usuario(
-                        env=env, gimnasio=gimnasio, id_usuario=random.randint(9000, 9999),
+                        env=env, gimnasio=gimnasio, id_usuario=new_id,
                         nombre=f"Visitante-{random.randint(100, 999)}", tipo_usuario="Pase_Diario",
                         subtipo="Visitante", plan_pago="Diario",
                         tiempo_llegada=inicio + random.uniform(10, 30), hora_fin=inicio + 90,
@@ -156,7 +163,7 @@ class MotorSimulacion:
             u.numero_sesion = int(minutos_hoy // self.config.DURACION_SESION) + 1
 
             # --- REGISTRO DE LLEGADA (CONSOLA Y TXT) ---
-            msg_llegada = f"   [T={env.now:7.2f}] 🚪 {u.nombre.ljust(25)} ha llegado a la recepción."
+            msg_llegada = f"   [T={env.now:7.2f}] 🚪 {u.nombre.ljust(25)} (ID: {u.id}) ha llegado a la recepción."
             print(msg_llegada)
             admin_logs.log(msg_llegada)
 
