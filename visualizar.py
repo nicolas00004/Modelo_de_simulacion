@@ -106,16 +106,6 @@ def generar_dashboard_maestro():
     ax2.set_title("Satisfaccion Media (0-100)", fontweight='bold')
     ax2.set_ylim(0, 105)
 
-    # GRAFICO 3: Economia (Ingresos vs Gastos)
-    ax3 = plt.subplot(4, 2, 3)
-    x = range(len(meses))
-    ax3.bar(x, ingresos, width=0.4, label='Ingresos', color='#2ecc71', align='center')
-    ax3.bar(x, gastos, width=0.4, label='Gastos', color='#e67e22', align='edge')
-    ax3.set_xticks(x)
-    ax3.set_xticklabels(meses)
-    ax3.set_title("Balance Economico (Euro)", fontweight='bold')
-    ax3.legend()
-
     # GRAFICO 4: Rentabilidad (Beneficio Neto)
     ax4 = plt.subplot(4, 2, 4)
     colores_ben = ['#2ecc71' if b > 0 else '#e74c3c' for b in beneficio]
